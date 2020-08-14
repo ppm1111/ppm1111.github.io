@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>index on The Root&#39;s Home</title>
-    <link>https://example.com/tags/index/</link>
-    <description>Recent content in index on The Root&#39;s Home</description>
+    <title>index on The ppm1111 root</title>
+    <link>https://ppm1111.github.io/tags/index/</link>
+    <description>Recent content in index on The ppm1111 root</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
     <copyright>Copyright © 2020, Root; all rights reserved.</copyright>
     
-	<atom:link href="https://example.com/tags/index/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://ppm1111.github.io/tags/index/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
       <title>Posts</title>
-      <link>https://example.com/basic-example/post/</link>
+      <link>https://ppm1111.github.io/basic-example/post/</link>
       <pubDate>Mon, 11 Mar 2019 00:00:00 +0000</pubDate>
       
-      <guid>https://example.com/basic-example/post/</guid>
+      <guid>https://ppm1111.github.io/basic-example/post/</guid>
       <description></description>
     </item>
     
