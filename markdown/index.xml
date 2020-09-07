@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>The ppm1111 root</title>
-    <link>https://ppm1111.github.io/</link>
-    <description>Recent content on The ppm1111 root</description>
+    <title>Markdowns on The ppm1111 root</title>
+    <link>https://ppm1111.github.io/markdown/</link>
+    <description>Recent content in Markdowns on The ppm1111 root</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
     <copyright>Copyright © 2020, Root; all rights reserved.</copyright>
     <lastBuildDate>Mon, 11 Mar 2019 00:00:00 +0000</lastBuildDate>
     
-	<atom:link href="https://ppm1111.github.io/index.xml" rel="self" type="application/rss+xml" />
+	<atom:link href="https://ppm1111.github.io/markdown/index.xml" rel="self" type="application/rss+xml" />
     
     
     <item>
@@ -57,20 +57,6 @@
       
       <guid>https://ppm1111.github.io/markdown/emoji-support/</guid>
       <description>&lt;p&gt;Emoji can be enabled in a Hugo project in a number of ways.&lt;/p&gt;</description>
-    </item>
-    
-    <item>
-      <title></title>
-      <link>https://ppm1111.github.io/fundamental/name_convention/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://ppm1111.github.io/fundamental/name_convention/</guid>
-      <description>變數命名 對於電腦來說，變數名稱並不重要，變數是給人看的，變數的命名好壞將影響整個程式的可讀性及可維護性．
- Indeed, the ratio of time spent reading versus writing is well over 10 to 1. We are constantly reading old code as part of the effort to write new code. &amp;hellip;[Therefore,] making it easy to read makes it easier to write. - Robert C. Martin
- 上面的意思是讀寫比例超過10:1，擁有好的可讀性將會使程式開發效率大幅上升。
-變數命名的好壞可由以下2點判斷:
- 可讀性 一致性  可讀性 變數是影響可讀性最大的一環，例如計算圓形面積:
-// 將秒數轉換成時:分:秒 ex 輸入10000轉成02:46:40 function a(b) { let c = parseInt(b / 3600); let d = parseInt(b % 3600 / 60); let e = parseInt(b % 3600 % 60); return `${c}:${d}:${e}`; } 上述的程式碼在無註解的情況不容易理解有什麼功能，若是面對更複雜的function或是整個程式，根本無法讀懂程式的運作。</description>
     </item>
     
   </channel>

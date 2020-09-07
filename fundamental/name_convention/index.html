@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang=en><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>  - The ppm1111 root</title>
+    <meta name="description" content="變數命名 對於電腦來說，變數名稱並不重要，變數是給人看的，變數的命名好壞將影響整個程式的可讀性及可維護性．
+ Indeed, the ratio of time spent reading versus writing is well over 10 to 1. We are constantly reading old code as part of the effort to write new code. &hellip;[Therefore,] making it easy to read makes it easier to write. - Robert C. Martin
+ 上面的意思是讀寫比例超過10:1，擁有好的可讀性將會使程式開發效率大幅上升。
+變數命名的好壞可由以下2點判斷:
+ 可讀性 一致性  可讀性 變數是影響可讀性最大的一環，例如計算圓形面積:
+// 將秒數轉換成時:分:秒 ex 輸入10000轉成02:46:40 function a(b) { let c = parseInt(b / 3600); let d = parseInt(b % 3600 / 60); let e = parseInt(b % 3600 % 60); return `${c}:${d}:${e}`; } 上述的程式碼在無註解的情況不容易理解有什麼功能，若是面對更複雜的function或是整個程式，根本無法讀懂程式的運作。">
+    <link rel="canonical" href="https://ppm1111.github.io/fundamental/name_convention/">
+    <meta property="og:title" content="">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://ppm1111.github.io/fundamental/name_convention/">
+    <meta property="og:description" content="變數命名 對於電腦來說，變數名稱並不重要，變數是給人看的，變數的命名好壞將影響整個程式的可讀性及可維護性．
+ Indeed, the ratio of time spent reading versus writing is well over 10 to 1. We are constantly reading old code as part of the effort to write new code. &hellip;[Therefore,] making it easy to read makes it easier to write. - Robert C. Martin
+ 上面的意思是讀寫比例超過10:1，擁有好的可讀性將會使程式開發效率大幅上升。
+變數命名的好壞可由以下2點判斷:
+ 可讀性 一致性  可讀性 變數是影響可讀性最大的一環，例如計算圓形面積:
+// 將秒數轉換成時:分:秒 ex 輸入10000轉成02:46:40 function a(b) { let c = parseInt(b / 3600); let d = parseInt(b % 3600 / 60); let e = parseInt(b % 3600 % 60); return `${c}:${d}:${e}`; } 上述的程式碼在無註解的情況不容易理解有什麼功能，若是面對更複雜的function或是整個程式，根本無法讀懂程式的運作。">
+    <meta property="og:site_name" content="The ppm1111 root">
+    <link rel="stylesheet" href="https://ppm1111.github.io/css/main.min.47525d28c8d4d3b1e5e7dcb9aad3c6bcc348274cc18ad83d790b879fb7ee6f8d.css" integrity="sha256-R1JdKMjU07Hl59y5qtPGvMNIJ0zBitg9eQuHn7fub40=">
+    <meta name="generator" content="Hugo 0.74.3" />
+    <script type="module" src="https://unpkg.com/ionicons@5.1.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule="" src="https://unpkg.com/ionicons@5.1.2/dist/ionicons/ionicons.js"></script>
+    
+</head>
+<body><header class="site-header">
+    <nav class="site-nav" role="navigation" aria-label="breadcrumb">
+    <ol itemscope itemtype="https://schema.org/BreadcrumbList" class="breadcrumb"><li class="breadcrumb-item  " 
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/">
+    <span itemprop="name">The ppm1111 root</span>
+  </a>
+  <meta itemprop="position" content="0" />
+</li>/<li class="breadcrumb-item  " 
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/fundamental/">
+    <span itemprop="name">fundamental</span>
+  </a>
+  <meta itemprop="position" content="0" />
+</li>/<li class="breadcrumb-item active hidden" aria-current="page"
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/fundamental/name_convention/">
+    <span itemprop="name">name_convention</span>
+  </a>
+  <meta itemprop="position" content="1" />
+</li></ol>
+    </nav>
+    <h1 class="site-title hidden">
+		<a href="https://ppm1111.github.io">The ppm1111 root</a>
+    </h1>
+</header>
+<main id="content">
+<article role="article" class="content post h-entry" itemscope="" itemtype="http://schema.org/BlogPosting">
+    <header class="post-header">        
+        <h2 class="post-title" itemprop="name headline"></h2>
+        <span class="post-meta">
+            <time class="date-published" datetime="0001-01-01T00:00:00&#43;07:00" itemprop="datePublished">
+                Mon, 1 Jan 0001
+            </time>
+            
+        </span>
+    </header>
+    <div class="post-content" itemprop="articleBody">
+        <h3 id="變數命名">變數命名</h3>
+<p>對於電腦來說，變數名稱並不重要，變數是給人看的，變數的命名好壞將影響整個程式的可讀性及可維護性．</p>
+<blockquote>
+<p>Indeed, the ratio of time spent reading versus writing is well over 10 to 1. We are constantly reading old code as part of the effort to write new code. &hellip;[Therefore,] making it easy to read makes it easier to write.  - Robert C. Martin</p>
+</blockquote>
+<p>上面的意思是讀寫比例超過10:1，擁有好的可讀性將會使程式開發效率大幅上升。</p>
+<p>變數命名的好壞可由以下2點判斷:</p>
+<ul>
+<li>可讀性</li>
+<li>一致性</li>
+</ul>
+<h4 id="可讀性">可讀性</h4>
+<p>變數是影響可讀性最大的一環，例如計算圓形面積:</p>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="c1">// 將秒數轉換成時:分:秒 ex 輸入10000轉成02:46:40
+</span><span class="c1"></span><span class="kd">function</span> <span class="nx">a</span><span class="p">(</span><span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">c</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">b</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">);</span>
+    <span class="kd">let</span> <span class="nx">d</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">b</span> <span class="o">%</span> <span class="mi">3600</span> <span class="o">/</span> <span class="mi">60</span><span class="p">);</span>
+    <span class="kd">let</span> <span class="nx">e</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">b</span> <span class="o">%</span> <span class="mi">3600</span> <span class="o">%</span> <span class="mi">60</span><span class="p">);</span>
+	<span class="k">return</span> <span class="sb">`</span><span class="si">${</span><span class="nx">c</span><span class="si">}</span><span class="sb">:</span><span class="si">${</span><span class="nx">d</span><span class="si">}</span><span class="sb">:</span><span class="si">${</span><span class="nx">e</span><span class="si">}</span><span class="sb">`</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><p>上述的程式碼在無註解的情況不容易理解有什麼功能，若是面對更複雜的function或是整個程式，根本無法讀懂程式的運作。</p>
+<p>好的命名:</p>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="kd">function</span> <span class="nx">convertSecondsToHMS</span><span class="p">(</span><span class="nx">totalSeconds</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">let</span> <span class="nx">hours</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">totalSeconds</span> <span class="o">/</span> <span class="mi">3600</span><span class="p">);</span>
+    <span class="kd">let</span> <span class="nx">minutes</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">totalSeconds</span> <span class="o">%</span> <span class="mi">3600</span> <span class="o">/</span> <span class="mi">60</span><span class="p">);</span>
+    <span class="kd">let</span> <span class="nx">seconds</span> <span class="o">=</span> <span class="nb">parseInt</span><span class="p">(</span><span class="nx">totalSeconds</span> <span class="o">%</span> <span class="mi">3600</span> <span class="o">%</span> <span class="mi">60</span><span class="p">);</span>
+	<span class="k">return</span> <span class="sb">`</span><span class="si">${</span><span class="nx">hours</span><span class="si">}</span><span class="sb">:</span><span class="si">${</span><span class="nx">minutes</span><span class="si">}</span><span class="sb">:</span><span class="si">${</span><span class="nx">seconds</span><span class="si">}</span><span class="sb">`</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><h4 id="一致性">一致性</h4>
+<p>一致性是指必須要用相同的規則命名整個程式的變數，可以是合作的工程師口頭約定也可以是一份code style文件．</p>
+<p>如果採用了駝峰式就必須一直使用駝峰式，如果將使用者名稱命名成userName就不要在中途改成accountName或只剩下user．</p>
+<h3 id="變數命名規則">變數命名規則</h3>
+<p>變數的字元是可以包含任何合法的標識符-無限長度的Unicode字母，例如一些拉丁字母或是中文:</p>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="kd">let</span> <span class="nx">ಠ_ಠ</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kd">let</span> <span class="nx">測試</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kd">let</span> <span class="nx">$test</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span>
+<span class="kd">let</span> <span class="nx">_ts12et$</span> <span class="o">=</span> <span class="mi">1</span>
+</code></pre></div><p>但一般情況下應以下劃線_及大小寫英文、數字為主，不能以數字開頭。</p>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="kd">let</span> <span class="nx">user_name</span> <span class="o">=</span> <span class="s1">&#39;John&#39;</span><span class="p">;</span>
+<span class="kd">let</span> <span class="nx">userName</span> <span class="o">=</span> <span class="s1">&#39;John&#39;</span><span class="p">;</span>
+</code></pre></div><h3 id="主流命名規則">主流命名規則</h3>
+<h4 id="駝峰式命名法camel-case">駝峰式命名法(Camel Case)</h4>
+<p>第一個字母為小寫，之後每一個單字的開頭為大寫，不包含空格。</p>
+<p>和Snake Case是較多被採用的命名方式，擇一使用即可。</p>
+<p>例如:</p>
+<ul>
+<li>userName</li>
+<li>fileName</li>
+</ul>
+<h4 id="pascal命名法pascal-case">Pascal命名法(Pascal Case)</h4>
+<p>跟Camel Case類似，只是第一個字要大寫。</p>
+<p>例如:</p>
+<ul>
+<li>UserName</li>
+<li>FileName</li>
+</ul>
+<h4 id="snake-case">Snake Case</h4>
+<p>單字皆為小寫，單字以底線_分離。</p>
+<p>和Camel Case是較多被採用的命名方式，擇一使用即可。</p>
+<p>例如:</p>
+<ul>
+<li>user_name</li>
+<li>file_name</li>
+</ul>
+<h4 id="kebab-case">Kebab Case</h4>
+<p>跟Snake Case類似，單字以減號-分離。</p>
+<p>常用地方:</p>
+<ul>
+<li>
+<p>html的裡面的class和id</p>
+<div class="highlight"><pre class="chroma"><code class="language-html" data-lang="html"><span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;col-md-6&#34;</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;user-password&#34;</span><span class="p">&gt;&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+</code></pre></div></li>
+<li>
+<p>restful api的網址分隔符號，如: api/order-list。</p>
+</li>
+</ul>
+<p>例如:</p>
+<ul>
+<li>user-name</li>
+<li>file-name</li>
+</ul>
+<h4 id="screaming-case">Screaming Case</h4>
+<p>跟Snake Case類似，單字皆為全大寫。</p>
+<p>常用地方:</p>
+<ul>
+<li>
+<p>常量變數(constant variable)，如: MAX_EXECUTION_TIME=60</p>
+</li>
+<li>
+<p>枚舉名稱(enum)</p>
+<div class="highlight"><pre class="chroma"><code class="language-java" data-lang="java"><span class="kd">enum</span> <span class="n">Level</span> <span class="o">{</span>
+  <span class="n">LOW</span><span class="o">,</span>
+  <span class="n">MEDIUM</span><span class="o">,</span>
+  <span class="n">HIGH</span>
+<span class="o">}</span>
+</code></pre></div></li>
+</ul>
+<p>例如:</p>
+<ul>
+<li>USER_NAME</li>
+<li>FILE_NAME</li>
+</ul>
+<h3 id="正確使用命名">正確使用命名</h3>
+<p>好的命名並不容易，當場景越來越複雜時，就會越難使用幾個單字描述該變數的功能。</p>
+<p>以下是可以遵守的規則:</p>
+<ul>
+<li>不要使用長度超過50字元的變數，太長的變數反而使程式碼可讀性降低，在清楚表達的前提下，名稱越短越好。</li>
+<li>變數的組成應為多個形容詞、名詞組成，避免使用單一動詞當作變數，如create = 1。</li>
+<li>區分單複數，例如: user是單數，users、userArray、userList、userCollection是複數。</li>
+<li>不要加入無意義的前綴，如: m_name，這寫法通常代表一個class下的成員變數(member variable) name，但是不必要，一個class底下的name只可能是成員變數，使用name即可。</li>
+<li>盡量不要使用無意義的單字，data、temp、value等，這種類型的單字稱作干擾詞，若是遍及整份程式碼，掩蓋了具有意義的單字。</li>
+<li>使用可以發音的單字，在溝通時若選用難以發音的單字，就會增加溝通的難度。</li>
+<li>若要使用無意義的單字或是單個字母如: i, j等，要確保變數的作用域在短行數的程式碼內，如for loop或一個短的if block，當變數的作用域越廣則須越長的名稱清楚地描述該變數的意義，反之，越狹窄的話名稱則要越短。</li>
+<li>推薦使用Camel Case或是Snake Case命名方式</li>
+<li>使用英文單字而不是類似中文拼音的方式，如biaoGe(中文拼音 的表格) 。</li>
+<li>使用有意義或公認的縮寫而不是只有少部分人才懂得縮寫，如果不是就應該使用全寫。公認的縮寫像是id(identity)、int(integer)這類的，不好的縮好像是order system裡面的user寫成os_user或soUser，或是db這類的縮寫，比較好的是system_order_user或systemOrderUser。</li>
+<li>當進行開發時，如果有更適合的變數名稱，就去更改他，不要害怕隨時改名。</li>
+<li>選擇一個單字就堅持下去，例如: user跟member、get跟retrieve跟fetch。</li>
+<li>使用正確的資訊專業術語，如某種演算法或是Factory、Interface，會去看程式碼的人都是有專業背景的，使用專業術語更能清楚表達，反之，若使用錯誤將產生極大的混淆。</li>
+<li>在命名時，應注重可搜索性，開發上難以避免搜尋變數，若是將大量的變數命名成data，即使不衝突也會造成搜尋上的困擾。</li>
+<li>標示變數的相關訊息可幫助了解變數的狀態，例如: boolean的變數取名為isLogin，是object的變數取名為userObj，是array的變數取名為userList或是userArray，比起users要清楚一點，相關訊息並不是指型態，所以不會出現userString或是strUser等(類似匈牙利命名法 Hungarian Notation)。</li>
+<li>boolean的變數可使用is/has/can + 名詞或形容詞或enable/disable + 動詞，以表達行為，如：isUser、hasName、canSignup、hidden、available、enableOrder、disableUpate，若是function返回boolean值可在前面加check，如:checkHasName()、checkIsUser()。</li>
+<li>變數命名方式因語言而異，用甚麼語言就用那語言推薦的style。</li>
+</ul>
+
+    </div>
+</article>
+<div class="pagination">
+    <div class="prev">
+        
+    </div>
+    <div class="next">
+        
+    </div>
+</div>
+
+
+        </main><footer class="site-footer">
+	<span class="left">Gohugo/0.74.3</span> 
+	<span class="right">
+		<em>The Root's Home</em> By 
+		<a href="https://github.com/rmsubekti" target="_blank" rel="noopener noreferrer">rmsubekti</a>
+	</span>
+</footer>
+</body>
+</html>
