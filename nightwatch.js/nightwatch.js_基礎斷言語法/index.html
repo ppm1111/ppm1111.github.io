@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang=en><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>  - The ppm1111 root</title>
+    <meta name="description" content="author = &ldquo;ppm1111&rdquo; title = &ldquo;Nightwatch.js 基礎斷言語法&rdquo; date = &ldquo;2020-11-23&rdquo; description = &ldquo;Nightwatch.js 基礎斷言語法&rdquo; tags = [ &ldquo;javascript&rdquo;, &ldquo;testing&rdquo;, &ldquo;nightwatch&rdquo;, &ldquo;themes&rdquo;, ] categories = [ &ldquo;nightwatch&rdquo;, ] series = [&ldquo;nightwatch&rdquo;]
+&#43;&#43;&#43;
+Nightwatch.js 基礎斷言語法 nightwatch 為 javascript 的 e2e testing 套件，使用W3C WebDriver api操作瀏覽器，可以模擬使用者操作瀏覽器的行為，確保 ui 流程都正確。
+範例程式碼 &lt;template&gt; &lt;div class=&#34;home&#34;&gt; &lt;a class=&#34;google-class&#34; href=&#34;https://www.google.com/&#34; id=&#34;google&#34; &gt;Google link&lt;/a&gt; &lt;input id=&#34;google-input&#34; value=&#34;test&#34;&gt; &lt;/div&gt; &lt;/template&gt; &lt;script&gt; export default { name: &#39;Home&#39;, mounted: function() { document.cookie = &#34;username=John Doe&#34;; } } &lt;/script&gt; &lt;style&gt; #google { color:#ff0000; } &lt;/style&gt; 畫面 測試程式碼 nightwatch斷言 module.">
+    <link rel="canonical" href="https://ppm1111.github.io/nightwatch.js/nightwatch.js_%E5%9F%BA%E7%A4%8E%E6%96%B7%E8%A8%80%E8%AA%9E%E6%B3%95/">
+    <meta property="og:title" content="">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://ppm1111.github.io/nightwatch.js/nightwatch.js_%E5%9F%BA%E7%A4%8E%E6%96%B7%E8%A8%80%E8%AA%9E%E6%B3%95/">
+    <meta property="og:description" content="author = &ldquo;ppm1111&rdquo; title = &ldquo;Nightwatch.js 基礎斷言語法&rdquo; date = &ldquo;2020-11-23&rdquo; description = &ldquo;Nightwatch.js 基礎斷言語法&rdquo; tags = [ &ldquo;javascript&rdquo;, &ldquo;testing&rdquo;, &ldquo;nightwatch&rdquo;, &ldquo;themes&rdquo;, ] categories = [ &ldquo;nightwatch&rdquo;, ] series = [&ldquo;nightwatch&rdquo;]
+&#43;&#43;&#43;
+Nightwatch.js 基礎斷言語法 nightwatch 為 javascript 的 e2e testing 套件，使用W3C WebDriver api操作瀏覽器，可以模擬使用者操作瀏覽器的行為，確保 ui 流程都正確。
+範例程式碼 &lt;template&gt; &lt;div class=&#34;home&#34;&gt; &lt;a class=&#34;google-class&#34; href=&#34;https://www.google.com/&#34; id=&#34;google&#34; &gt;Google link&lt;/a&gt; &lt;input id=&#34;google-input&#34; value=&#34;test&#34;&gt; &lt;/div&gt; &lt;/template&gt; &lt;script&gt; export default { name: &#39;Home&#39;, mounted: function() { document.cookie = &#34;username=John Doe&#34;; } } &lt;/script&gt; &lt;style&gt; #google { color:#ff0000; } &lt;/style&gt; 畫面 測試程式碼 nightwatch斷言 module.">
+    <meta property="og:site_name" content="The ppm1111 root">
+    <link rel="stylesheet" href="https://ppm1111.github.io/css/main.min.47525d28c8d4d3b1e5e7dcb9aad3c6bcc348274cc18ad83d790b879fb7ee6f8d.css" integrity="sha256-R1JdKMjU07Hl59y5qtPGvMNIJ0zBitg9eQuHn7fub40=">
+    <meta name="generator" content="Hugo 0.72.0" />
+    <script type="module" src="https://unpkg.com/ionicons@5.1.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule="" src="https://unpkg.com/ionicons@5.1.2/dist/ionicons/ionicons.js"></script>
+    
+    
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TS59QSESCS"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-TS59QSESCS');
+    </script>
+</head>
+<body><header class="site-header">
+    <nav class="site-nav" role="navigation" aria-label="breadcrumb">
+    <ol itemscope itemtype="https://schema.org/BreadcrumbList" class="breadcrumb"><li class="breadcrumb-item  " 
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/">
+    <span itemprop="name">The ppm1111 root</span>
+  </a>
+  <meta itemprop="position" content="0" />
+</li>/<li class="breadcrumb-item  " 
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/nightwatch.js/">
+    <span itemprop="name">nightwatch.js</span>
+  </a>
+  <meta itemprop="position" content="0" />
+</li>/<li class="breadcrumb-item active hidden" aria-current="page"
+  itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+  <a itemtype="https://schema.org/Thing" itemprop="item" href="https://ppm1111.github.io/nightwatch.js/nightwatch.js_%E5%9F%BA%E7%A4%8E%E6%96%B7%E8%A8%80%E8%AA%9E%E6%B3%95/">
+    <span itemprop="name">nightwatch.js_%E5%9F%BA%E7%A4%8E%E6%96%B7%E8%A8%80%E8%AA%9E%E6%B3%95</span>
+  </a>
+  <meta itemprop="position" content="1" />
+</li></ol>
+    </nav>
+    <h1 class="site-title hidden">
+		<a href="https://ppm1111.github.io">The ppm1111 root</a>
+    </h1>
+</header>
+<main id="content">
+<article role="article" class="content post h-entry" itemscope="" itemtype="http://schema.org/BlogPosting">
+    <header class="post-header">        
+        <h2 class="post-title" itemprop="name headline"></h2>
+        <span class="post-meta">
+            <time class="date-published" datetime="0001-01-01T00:00:00&#43;07:00" itemprop="datePublished">
+                Mon, 1 Jan 0001
+            </time>
+            
+        </span>
+    </header>
+    <div class="post-content" itemprop="articleBody">
+        <p>author = &ldquo;ppm1111&rdquo;
+title = &ldquo;Nightwatch.js 基礎斷言語法&rdquo;
+date = &ldquo;2020-11-23&rdquo;
+description = &ldquo;Nightwatch.js 基礎斷言語法&rdquo;
+tags = [
+&ldquo;javascript&rdquo;,
+&ldquo;testing&rdquo;,
+&ldquo;nightwatch&rdquo;,
+&ldquo;themes&rdquo;,
+]
+categories = [
+&ldquo;nightwatch&rdquo;,
+]
+series = [&ldquo;nightwatch&rdquo;]</p>
+<p>+++</p>
+<h1 id="nightwatchjs-基礎斷言語法">Nightwatch.js 基礎斷言語法</h1>
+<p>nightwatch 為 javascript 的 e2e testing 套件，使用W3C WebDriver api操作瀏覽器，可以模擬使用者操作瀏覽器的行為，確保 ui 流程都正確。</p>
+<h1 id="範例程式碼">範例程式碼</h1>
+<div class="highlight"><pre class="chroma"><code class="language-vue" data-lang="vue"><span class="p">&lt;</span><span class="nt">template</span><span class="p">&gt;</span>
+  <span class="p">&lt;</span><span class="nt">div</span> <span class="na">class</span><span class="o">=</span><span class="s">&#34;home&#34;</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">a</span> 
+      <span class="na">class</span><span class="o">=</span><span class="s">&#34;google-class&#34;</span>
+      <span class="na">href</span><span class="o">=</span><span class="s">&#34;https://www.google.com/&#34;</span>
+      <span class="na">id</span><span class="o">=</span><span class="s">&#34;google&#34;</span>
+    <span class="p">&gt;</span><span class="nx">Google</span> <span class="nx">link</span><span class="p">&lt;/</span><span class="nt">a</span><span class="p">&gt;</span>
+    <span class="p">&lt;</span><span class="nt">input</span> <span class="na">id</span><span class="o">=</span><span class="s">&#34;google-input&#34;</span> <span class="na">value</span><span class="o">=</span><span class="s">&#34;test&#34;</span><span class="p">&gt;</span>
+  <span class="p">&lt;/</span><span class="nt">div</span><span class="p">&gt;</span>
+<span class="p">&lt;/</span><span class="nt">template</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">script</span><span class="p">&gt;</span>
+<span class="kr">export</span> <span class="k">default</span> <span class="p">{</span>
+  <span class="nx">name</span><span class="o">:</span> <span class="s1">&#39;Home&#39;</span><span class="p">,</span>
+  <span class="nx">mounted</span><span class="o">:</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="nb">document</span><span class="p">.</span><span class="nx">cookie</span> <span class="o">=</span> <span class="s2">&#34;username=John Doe&#34;</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">script</span><span class="p">&gt;</span>
+
+<span class="p">&lt;</span><span class="nt">style</span><span class="p">&gt;</span>
+<span class="err">#</span><span class="nx">google</span> <span class="p">{</span>
+  <span class="nx">color</span><span class="o">:</span><span class="err">#</span><span class="nx">ff0000</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">&lt;/</span><span class="nt">style</span><span class="p">&gt;</span>
+
+</code></pre></div><h2 id="畫面">畫面</h2>
+<p><img src="https://i.imgur.com/66imqV7.png" alt=""></p>
+<h1 id="測試程式碼">測試程式碼</h1>
+<h2 id="nightwatch斷言">nightwatch斷言</h2>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="p">{</span>
+  <span class="s1">&#39;default e2e tests&#39;</span><span class="o">:</span> <span class="nx">browser</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="nx">browser</span>
+      <span class="p">.</span><span class="nx">init</span><span class="p">()</span>
+      <span class="p">.</span><span class="nx">waitForElementVisible</span><span class="p">(</span><span class="s1">&#39;#app&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">attributeContains</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">,</span> <span class="s1">&#39;href&#39;</span><span class="p">,</span> <span class="s1">&#39;google.com&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">attributeEquals</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">,</span> <span class="s1">&#39;href&#39;</span><span class="p">,</span> <span class="s1">&#39;https://www.google.com/&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">containsText</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">,</span> <span class="s1">&#39;Google&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">cssClassPresent</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">,</span> <span class="s1">&#39;google-class&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">cssProperty</span><span class="p">(</span><span class="s2">&#34;#google&#34;</span><span class="p">,</span> <span class="s2">&#34;color&#34;</span><span class="p">,</span> <span class="s2">&#34;rgba(255, 0, 0, 1)&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">domPropertyContains</span><span class="p">(</span><span class="s2">&#34;#google&#34;</span><span class="p">,</span> <span class="s2">&#34;innerHTML&#34;</span><span class="p">,</span> <span class="s2">&#34;Google&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">domPropertyEquals</span><span class="p">(</span><span class="s2">&#34;#google-input&#34;</span><span class="p">,</span> <span class="s2">&#34;disabled&#34;</span><span class="p">,</span> <span class="kc">false</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">elementPresent</span><span class="p">(</span><span class="s2">&#34;#google&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">title</span><span class="p">(</span><span class="s2">&#34;test&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">urlContains</span><span class="p">(</span><span class="s2">&#34;localhost&#34;</span><span class="p">)</span>
+      <span class="c1">// .assert.urlEquals(&#34;http://localhost:8082/#/&#34;)
+</span><span class="c1"></span>      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">value</span><span class="p">(</span><span class="s2">&#34;#google-input&#34;</span><span class="p">,</span> <span class="s1">&#39;test&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">valueContains</span><span class="p">(</span><span class="s2">&#34;#google-input&#34;</span><span class="p">,</span> <span class="s1">&#39;tes&#39;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">assert</span><span class="p">.</span><span class="nx">visible</span><span class="p">(</span><span class="s2">&#34;#google-input&#34;</span><span class="p">)</span>
+      <span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+  <span class="p">},</span>
+<span class="p">}</span>
+</code></pre></div><h2 id="bdd斷言">BDD斷言</h2>
+<div class="highlight"><pre class="chroma"><code class="language-javascript" data-lang="javascript"><span class="nx">module</span><span class="p">.</span><span class="nx">exports</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;default bdd tests&#39;</span><span class="o">:</span> <span class="kd">function</span><span class="p">(</span><span class="nx">browser</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">browser</span> <span class="o">=</span> <span class="nx">browser</span><span class="p">.</span><span class="nx">init</span><span class="p">();</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">present</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google-input&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">present</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">equal</span><span class="p">(</span><span class="s1">&#39;Google link&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">contain</span><span class="p">(</span><span class="s1">&#39;Google&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/[a-z A-Z]+/</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">startWith</span><span class="p">(</span><span class="s1">&#39;G&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">text</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">endWith</span><span class="p">(</span><span class="s1">&#39;k&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">cookie</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">equal</span><span class="p">(</span><span class="s1">&#39;John Doe&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">cookie</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">contain</span><span class="p">(</span><span class="s1">&#39;John&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">cookie</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">match</span><span class="p">(</span><span class="sr">/[a-z A-Z]+/</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">cookie</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">startWith</span><span class="p">(</span><span class="s1">&#39;Jo&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">cookie</span><span class="p">(</span><span class="s1">&#39;username&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">endWith</span><span class="p">(</span><span class="s1">&#39;oe&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">an</span><span class="p">(</span><span class="s1">&#39;a&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">execute</span><span class="p">(</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span> 
+            <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">&#39;google&#39;</span><span class="p">).</span><span class="nx">focus</span><span class="p">();</span>
+        <span class="p">}).</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">active</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">enabled</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">have</span><span class="p">.</span><span class="nx">attribute</span><span class="p">(</span><span class="s1">&#39;class&#39;</span><span class="p">).</span><span class="nx">equals</span><span class="p">(</span><span class="s1">&#39;google-class&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">have</span><span class="p">.</span><span class="nx">property</span><span class="p">(</span><span class="s1">&#39;className&#39;</span><span class="p">).</span><span class="nx">equals</span><span class="p">(</span><span class="s1">&#39;google-class&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">have</span><span class="p">.</span><span class="nx">css</span><span class="p">(</span><span class="s1">&#39;display&#39;</span><span class="p">).</span><span class="nx">equals</span><span class="p">(</span><span class="s1">&#39;inline&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">have</span><span class="p">.</span><span class="nx">css</span><span class="p">(</span><span class="s1">&#39;display&#39;</span><span class="p">).</span><span class="nx">contains</span><span class="p">(</span><span class="s1">&#39;in&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">have</span><span class="p">.</span><span class="nx">css</span><span class="p">(</span><span class="s1">&#39;display&#39;</span><span class="p">).</span><span class="nx">match</span><span class="p">(</span><span class="sr">/[a-z]+/</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;.google-select option[value=&#34;a&#34;]&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">selected</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google-input&#39;</span><span class="p">).</span><span class="nx">value</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">equal</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">element</span><span class="p">(</span><span class="s1">&#39;#google-input&#39;</span><span class="p">).</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">visible</span><span class="p">;</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">elements</span><span class="p">(</span><span class="s1">&#39;#google-input&#39;</span><span class="p">).</span><span class="nx">count</span><span class="p">.</span><span class="nx">to</span><span class="p">.</span><span class="nx">be</span><span class="p">.</span><span class="nx">equals</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">title</span><span class="p">().</span><span class="nx">equals</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">);</span>
+        <span class="nx">browser</span><span class="p">.</span><span class="nx">expect</span><span class="p">.</span><span class="nx">url</span><span class="p">().</span><span class="nx">contains</span><span class="p">(</span><span class="s1">&#39;localhost&#39;</span><span class="p">);</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+  
+  
+</code></pre></div><h1 id="nightwatch斷言-1">Nightwatch斷言</h1>
+<table>
+<thead>
+<tr>
+<th align="center">Api</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">attributeContains</td>
+<td>Ex: .assert.attributeContains('#goolge&rsquo;, &lsquo;href&rsquo;, &lsquo;google.com&rsquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->id 為 google 的元素裡面， href 包含google.com字串。</td>
+</tr>
+<tr>
+<td align="center">attributeEquals</td>
+<td>Ex: .assert.attributeEquals('#goolge&rsquo;, &lsquo;href&rsquo;, &lsquo;<a href="https://www.google.com/'">https://www.google.com/'</a>)<!-- raw HTML omitted --><!-- raw HTML omitted -->id 為 google 的元素裡面， href 等於https://www.google.com/字串，跟attributeContains差別在於需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">containsText</td>
+<td>Ex: ..assert.containsText('#goolge&rsquo;, &lsquo;Google&rsquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->id 為 google 的元素裡面， 文字的部分包含Google，不需完全符合。</td>
+</tr>
+<tr>
+<td align="center">cssClassPresent</td>
+<td>Ex: .assert.cssClassPresent('#goolge&rsquo;, &lsquo;google-class&rsquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->id 為 google 的元素裡面， 有一個class叫google-class，需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">cssProperty</td>
+<td>Ex: .assert.cssProperty(&quot;#goolge&rdquo;, &ldquo;color&rdquo;, &ldquo;rgba(255, 0, 0, 1)&quot;)<!-- raw HTML omitted --><!-- raw HTML omitted -->id 為 google 的元素裡面， 有一個css style叫color值為rgba(255, 0, 0, 1)，需要完全符合，color不管是red還是#ff0000將被轉成為rgba格式，對css file也有效。</td>
+</tr>
+<tr>
+<td align="center">domPropertyContains</td>
+<td>Ex: .assert.domPropertyContains(&quot;#google&rdquo;, &ldquo;innerHTML&rdquo;, &ldquo;Google&rdquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->需要區分html attribute和dom property，不能比較true、false，不需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">domPropertyEquals</td>
+<td>Ex: .assert.domPropertyEquals(&quot;#google-input&rdquo;, &ldquo;disabled&rdquo;, false)<!-- raw HTML omitted --><!-- raw HTML omitted -->能比較true跟false，看起來是強型態比較，false不能寫成&quot;false&rdquo;，需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">elementPresent</td>
+<td>Ex: .assert.elementPresent(&quot;#google&rdquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->確認元素是否存在，可以為display: none。</td>
+</tr>
+<tr>
+<td align="center">title</td>
+<td>Ex: .assert.title(&ldquo;google&rdquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->確認網站的title tag是否為google，需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">urlContains</td>
+<td>Ex: .assert.urlContains(&ldquo;localhost&rdquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->確認網址有沒有包含localhost，當前網址為http://localhsot:8081。</td>
+</tr>
+<tr>
+<td align="center">urlEquals</td>
+<td>Ex: .assert.urlEquals(&ldquo;http://localhost:8081/#/&quot;)<!-- raw HTML omitted --><!-- raw HTML omitted -->需要完全符合，在vue網址後面會有/#/也要加上去。</td>
+</tr>
+<tr>
+<td align="center">value</td>
+<td>Ex: .assert.value(&quot;#google-input&rdquo;, &lsquo;test&rsquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->通常針對input，確認input裡面有test，需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">valueContains</td>
+<td>Ex: .assert.valueContains(&quot;#google-input&rdquo;, &lsquo;test&rsquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->確認input裡面包含test，不需要完全符合。</td>
+</tr>
+<tr>
+<td align="center">visible</td>
+<td>Ex: .assert.visible(&quot;#google&rdquo;)<!-- raw HTML omitted --><!-- raw HTML omitted -->確認網頁上的元素是否看得到，被hidden或是超出可見範圍都不行，例如：設定position:absolute;  top:-1000px;就不行。</td>
+</tr>
+</tbody>
+</table>
+<h1 id="bdd風格的斷言">BDD風格的斷言</h1>
+<p>BDD的目的是將執行規格變成自然語言的方式，讓工程師、業務人員等系統參與者都可以理解，以便跟程式碼的測試做對應。</p>
+<p>基於Chai library，使用鏈式調用，一次只能斷言一個。</p>
+<p>browser.init().expect.element('#google&rsquo;).to.be.present
+.expect.element('#google-input&rsquo;).to.be.present;
+上面這種寫法不行，要寫成:</p>
+<p>browser.init().expect.element('#google&rsquo;).to.be.present
+browser.init().expect.element('#google-input&rsquo;).to.be.present;</p>
+<h2 id="增加可讀性的api">增加可讀性的API</h2>
+<p>沒有實際的功能，單純為了增加可讀性，順序也不影響執行。</p>
+<p>to、be、been、is、that、which、and、has、have、with、at、does、of</p>
+<h2 id="比較值的api">比較值的API</h2>
+<table>
+<thead>
+<tr>
+<th align="center">Api</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">equal</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.equal(&lsquo;Google link&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->完全符合</td>
+</tr>
+<tr>
+<td align="center">contain</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.contain(&lsquo;Google&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->不需要完全符合</td>
+</tr>
+<tr>
+<td align="center">match</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.match(/[a-z A-Z]+/);<!-- raw HTML omitted --><!-- raw HTML omitted -->regex比對</td>
+</tr>
+<tr>
+<td align="center">startWith</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.startWith(&lsquo;G&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->開始字符</td>
+</tr>
+<tr>
+<td align="center">endWith</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.endWith(&lsquo;k&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->結束字符</td>
+</tr>
+</tbody>
+</table>
+<h2 id="指定對象api">指定對象API</h2>
+<table>
+<thead>
+<tr>
+<th align="center">APi</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">element</td>
+<td>比較對象為dom元素<!-- raw HTML omitted --><!-- raw HTML omitted -->Ex:<!-- raw HTML omitted -->browser.expect.element('#google&rsquo;).text.to.equal(&lsquo;Google link&rsquo;);&lt;br/ browser.expect.element('#google&rsquo;).text.to.contain(&lsquo;Google&rsquo;);<!-- raw HTML omitted -->browser.expect.element('#google&rsquo;).text.to.match(/[a-z A-Z]+/);<!-- raw HTML omitted -->browser.expect.element('#google&rsquo;).text.to.startWith(&lsquo;G&rsquo;);<!-- raw HTML omitted -->browser.expect.element('#google&rsquo;).text.to.endWith(&lsquo;k&rsquo;);</td>
+</tr>
+<tr>
+<td align="center">cookie</td>
+<td>比較對象為cookie的值<!-- raw HTML omitted --><!-- raw HTML omitted -->Ex:<!-- raw HTML omitted -->browser.expect.cookie(&lsquo;username&rsquo;).to.equal(&lsquo;John Doe&rsquo;);<!-- raw HTML omitted -->browser.expect.cookie(&lsquo;username&rsquo;).to.contain(&lsquo;John&rsquo;);<!-- raw HTML omitted -->browser.expect.cookie(&lsquo;username&rsquo;).to.match(/[a-z A-Z]+/);<!-- raw HTML omitted -->browser.expect.cookie(&lsquo;username&rsquo;).to.startWith(&lsquo;Jo&rsquo;);<!-- raw HTML omitted -->browser.expect.cookie(&lsquo;username&rsquo;).to.endWith(&lsquo;oe&rsquo;);</td>
+</tr>
+<tr>
+<td align="center">elements</td>
+<td>比較對象為dom元素<!-- raw HTML omitted --><!-- raw HTML omitted -->可以取得同樣selector的元素。</td>
+</tr>
+</tbody>
+</table>
+<h2 id="比較dom的api">比較DOM的API</h2>
+<table>
+<thead>
+<tr>
+<th align="center">API</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center">a / an</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.an(&lsquo;a&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->比較tag，id為google元素的tag是a。</td>
+</tr>
+<tr>
+<td align="center">active</td>
+<td>Ex: browser.execute( function() { <!-- raw HTML omitted -->            document.getElementById(&lsquo;google&rsquo;).focus();<!-- raw HTML omitted -->}).expect.element('#google&rsquo;).to.be.active;<!-- raw HTML omitted --><!-- raw HTML omitted -->要在nightwatch裡面使用document，必須在execute裡面。<!-- raw HTML omitted -->active判斷元素是否為activeElement。</td>
+</tr>
+<tr>
+<td align="center">attribute</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.have.attribute(&lsquo;class&rsquo;).equals(&lsquo;google-class&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷html attribute的值。</td>
+</tr>
+<tr>
+<td align="center">css</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.have.css(&lsquo;display&rsquo;).equals(&lsquo;inline&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷css的值。</td>
+</tr>
+<tr>
+<td align="center">enabled</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.be.enabled;<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷元素是否為enabled。</td>
+</tr>
+<tr>
+<td align="center">present</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.be.present;<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷元素是否存在於html中。</td>
+</tr>
+<tr>
+<td align="center">property</td>
+<td>Ex: browser.expect.element('#google&rsquo;).to.have.property(&lsquo;className&rsquo;).equals(&lsquo;google-class&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷dom property的值。</td>
+</tr>
+<tr>
+<td align="center">selected</td>
+<td>Ex: browser.expect.element('.google-select option[value=&quot;a&rdquo;]').to.be.selected;<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷select裡面的option是否被選擇。</td>
+</tr>
+<tr>
+<td align="center">text</td>
+<td>Ex: browser.expect.element('#google&rsquo;).text.to.equal(&lsquo;Google link&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷text的值。</td>
+</tr>
+<tr>
+<td align="center">value</td>
+<td>Ex: browser.expect.element('#google-input&rsquo;).value.to.equal(&lsquo;test&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷input的值。</td>
+</tr>
+<tr>
+<td align="center">visible</td>
+<td>Ex: browser.expect.element('#google-input&rsquo;).to.be.visible;<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷元素是否可見。</td>
+</tr>
+<tr>
+<td align="center">elements().count</td>
+<td>Ex: browser.expect.elements('#google-input&rsquo;).count.to.be.equals(1);<!-- raw HTML omitted --><!-- raw HTML omitted -->取得元素總數。</td>
+</tr>
+<tr>
+<td align="center">title</td>
+<td>Ex: browser.expect.title().equals(&lsquo;test&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷網頁title tag的值。</td>
+</tr>
+<tr>
+<td align="center">url</td>
+<td>Ex: browser.expect.url().contains(&lsquo;localhost&rsquo;);<!-- raw HTML omitted --><!-- raw HTML omitted -->判斷網址，可以使用。</td>
+</tr>
+</tbody>
+</table>
+
+    </div>
+</article>
+<div class="pagination">
+    <div class="prev">
+        
+    </div>
+    <div class="next">
+        
+    </div>
+</div>
+
+
+        </main><footer class="site-footer">
+	<span class="left">Gohugo/0.72.0</span> 
+	<span class="right">
+		<em>The Root's Home</em> By 
+		<a href="https://github.com/rmsubekti" target="_blank" rel="noopener noreferrer">rmsubekti</a>
+	</span>
+</footer>
+</body>
+</html>
