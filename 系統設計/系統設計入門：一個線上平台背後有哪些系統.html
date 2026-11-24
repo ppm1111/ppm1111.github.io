@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系統設計入門：一個線上平台背後有哪些系統｜我的筆記 Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Patrick+Hand&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/code.css">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="page-note">
+<div class="desk">
+<nav class="crumbs"><a href="../index.html">&larr; 筆記本首頁</a><span>/</span><a href="../index.html#cat-%E7%B3%BB%E7%B5%B1%E8%A8%AD%E8%A8%88">系統設計</a></nav>
+<div class="layout">
+<article class="notebook">
+<div class="spiral"></div><div class="tape left"></div><div class="tape right"></div>
+<header class="note-head"><a class="cat-tag" href="../index.html#cat-%E7%B3%BB%E7%B5%B1%E8%A8%AD%E8%A8%88">系統設計</a><br><h1 class="title">系統設計入門：一個線上平台背後有哪些系統</h1><p class="meta"><span>作者：Robert Heaton</span><span>日期：2020-04-06</span><a href="https://robertheaton.com/2020/04/06/systems-design-for-advanced-beginners/" target="_blank" rel="noopener noreferrer">原文連結</a></p></header>
+<details class="toc-inline"><summary>目錄</summary><ul><li class="lv2"><a href="#s-1">先講重點</a></li><li class="lv2"><a href="#s-2">什麼是伺服器</a></li><li class="lv2"><a href="#s-3">對外的三個入口</a></li><li class="lv3"><a href="#s-4">網頁：單頁應用（SPA）</a></li><li class="lv3"><a href="#s-5">手機 App</a></li><li class="lv3"><a href="#s-6">API</a></li><li class="lv3"><a href="#s-7">Client library</a></li><li class="lv2"><a href="#s-8">Webhook：平台主動通知你</a></li><li class="lv3"><a href="#s-9">安全：怎麼知道這個請求真的是平台發的</a></li><li class="lv3"><a href="#s-10">可靠：送失敗了怎麼辦</a></li><li class="lv2"><a href="#s-11">用密碼登入</a></li><li class="lv2"><a href="#s-12">主資料庫怎麼長大</a></li><li class="lv3"><a href="#s-13">分片</a></li><li class="lv3"><a href="#s-14">複寫</a></li><li class="lv3"><a href="#s-15">備份</a></li><li class="lv2"><a href="#s-16">其他的資料系統</a></li><li class="lv3"><a href="#s-17">全文搜尋</a></li><li class="lv3"><a href="#s-18">資料倉儲</a></li><li class="lv3"><a href="#s-19">三個資料系統的分工</a></li><li class="lv2"><a href="#s-20">背景工作</a></li><li class="lv3"><a href="#s-21">Pub/Sub：事件發生後的連鎖動作</a></li><li class="lv3"><a href="#s-22">排程工作</a></li><li class="lv2"><a href="#s-23">內部管理工具</a></li><li class="lv2"><a href="#s-24">原文沒有涵蓋的部分</a></li><li class="lv2"><a href="#s-25">參考來源</a></li></ul></details>
+<div class="content">
+<blockquote>
+<p>整理自 Robert Heaton 的〈Systems design for advanced beginners〉（2020）。原文用一個虛構的二手交易平台「Steveslist」當例子，把一家網路公司五年後會有的系統走過一遍。這篇是我消化後重寫的版本：結構重排過，補了原文沒講的背景與常見的坑，原文說錯或過時的地方另外標出來。</p>
+</blockquote>
+<h2 id="s-1">先講重點</h2>
+<p>一個「會寫小網站」的人和「看得懂大型平台」的人，差別不在某個高深技術，而在知道<strong>有哪些零件、每個零件解決什麼問題、代價是什麼</strong>。這篇要記住的只有幾件事：</p>
+<ol>
+<li><strong>對外只有三種入口</strong>：瀏覽器、手機 App、API。三者本質上都是「送 HTTP 請求給伺服器、拿回資料」。</li>
+<li><strong>主資料庫是唯一的真相來源</strong>（source of truth）。搜尋引擎、資料倉儲裡的資料都是從它複製出去的副本，掉了可以重建。</li>
+<li><strong>沒有最好的資料庫，只有適合某種查詢的資料庫</strong>。精確查詢用關聯式資料庫，模糊搜尋用搜尋引擎，全公司的大統計用資料倉儲。</li>
+<li><strong>資料量大了就分片（sharding），怕機器掛就複寫（replication），怕全毀就備份（backup）</strong>。三件事解決的是三個不同的問題，不能互相取代。</li>
+<li><strong>不需要使用者等的事就丟到背景做</strong>（pub/sub、排程工作）。代價是你得處理「重複執行」和「晚一點才一致」。</li>
+<li>幾乎每個選擇都是<strong>速度、正確性、複雜度</strong>三者的取捨。原文作者自己也說：現實中很多技術選型的真正理由是「某人剛好很熟這個」和「當時隨手選的，後來沒空重新評估」。</li>
+</ol>
+<p>全貌大概長這樣：</p>
+<pre class="code"><code> 瀏覽器(SPA)     手機 App      第三方程式(client library)
+      \             |              /
+       \            |             /
+        v           v            v
+      +------------------------------+
+      |     應用伺服器 (HTTP API)     |-----&gt; Webhook 送給賣家的伺服器
+      +------------------------------+
+         |            |          |
+         v            v          v
+   主資料庫(SQL)   訊息代理      內部管理工具(獨立部署)
+   分片 + 複寫     (pub/sub)
+     |    |  \         |
+     |    |   \        v
+     |    |    \     消費者：寄信、反詐欺、發 webhook…
+     |    |     \
+     v    v      v
+   備份  搜尋引擎  資料倉儲        排程工作 (cron) 負責定時搬資料、對帳、寄報表
+</code></pre>
+<h2 id="s-2">什麼是伺服器</h2>
+<p><strong>伺服器（server）就是一台掛在網路上、等別的電腦來找它的電腦</strong>（更精確地說，是上面跑的那支程式）。收到資料後做點事，通常再回傳一些資料。</p>
+<ul>
+<li>網頁伺服器：等 HTTP 請求，回傳網頁或資料。</li>
+<li>資料庫伺服器：等查詢語句，讀寫它管理的資料。</li>
+</ul>
+<p>補充兩個常被混用的詞：</p>
+<ul>
+<li><strong>應用伺服器（application server）</strong>：跑你自己寫的商業邏輯的那些機器。</li>
+<li>「伺服器」有時指實體機器、有時指虛擬機、有時指一支行程。現在一台實體機上常跑很多個容器，所以談架構時講的通常是「角色」而不是「幾台機器」。</li>
+</ul>
+<h2 id="s-3">對外的三個入口</h2>
+<h3 id="s-4">網頁：單頁應用（SPA）</h3>
+<p>單頁應用（Single-Page Application）的「單頁」是指：使用者在站內點來點去時，瀏覽器幾乎不用整頁重新載入。</p>
+<p>流程是：</p>
+<ol>
+<li>瀏覽器第一次請求，伺服器回一份幾乎空的 HTML 骨架。</li>
+<li>骨架叫瀏覽器再去抓一大包 JavaScript。</li>
+<li>JavaScript 在瀏覽器裡執行，負責畫出畫面。</li>
+<li>之後需要資料時，JavaScript 在背景向伺服器的 API 發請求，拿到資料後只更新畫面的一小塊。</li>
+</ol>
+<p>相對的是傳統的多頁網站：每點一個連結，伺服器就產生一整頁新的 HTML。原文舉的例子是作者自己的部落格（多頁）對比 Twitter（單頁）。</p>
+<blockquote>
+<p><strong>和原文不同</strong>：原文說背景請求叫「Asynchronous JavaScript XML Request」。AJAX 的正確全名是 <strong>Asynchronous JavaScript and XML</strong>。而且這個名字現在只剩歷史意義：實際傳的幾乎都是 JSON 而不是 XML，寫法上也多半用瀏覽器內建的 <code>fetch</code>，而不是早期的 <code>XMLHttpRequest</code>。</p>
+</blockquote>
+<p>原文只說 SPA「做起來很費工但很好看」，這太簡略了。實際要考慮的是：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>單頁應用</th>
+<th>伺服器產生頁面</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>站內切換</td>
+<td>快，像 App</td>
+<td>每次整頁重載</td>
+</tr>
+<tr>
+<td>第一次開啟</td>
+<td>慢，要先下載並執行大量 JavaScript</td>
+<td>快，HTML 來了就能看</td>
+</tr>
+<tr>
+<td>搜尋引擎收錄</td>
+<td>較麻煩，內容是 JavaScript 畫出來的</td>
+<td>天生沒問題</td>
+</tr>
+<tr>
+<td>開發複雜度</td>
+<td>高，前端要管理狀態、路由</td>
+<td>低</td>
+</tr>
+<tr>
+<td>適合</td>
+<td>互動密集的工具（信箱、後台、編輯器）</td>
+<td>內容為主的網站（部落格、文件、商品頁）</td>
+</tr>
+</tbody>
+</table></div>
+<p>現在常見的折衷是<strong>伺服器端渲染（SSR）</strong>：第一頁由伺服器產生完整 HTML，載入後再由 JavaScript 接手變成單頁應用，Next.js、Nuxt 這類框架就是做這件事。所以「要不要做 SPA」不是二選一。</p>
+<h3 id="s-5">手機 App</h3>
+<p>App 和網頁前端做的是同一件事：發 HTTP 請求給伺服器、拿回資料、更新畫面。所以<strong>後端可以共用同一套 API</strong>，額外的工作只有 App 本身的介面。</p>
+<p>也可以用跨平台框架一份程式碼出 iOS 和 Android，例如 React Native（寫 JavaScript）或 Flutter（寫 Dart）。</p>
+<p>原文沒提、但實務上很重要的一點：<strong>App 一旦發出去就收不回來</strong>。網頁改版後所有人下次開就是新版，但使用者手機裡的舊版 App 可能會存在好幾年，而且繼續呼叫你的 API。所以給 App 用的 API 必須向下相容，改動要用版本號區隔（這也是下面網址裡有 <code>/v1/</code> 的原因）。</p>
+<h3 id="s-6">API</h3>
+<p>API 讓別人寫程式來操作你的平台，例如一次上架幾百件商品。做法是對你公開的**端點（endpoint）**發 HTTP 請求，例如 <code>GET api.steveslist.com/v1/listings</code> 取得自己的所有商品。回應用 <strong>JSON</strong> 格式：</p>
+<pre class="code"><span class="code-lang">json</span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;listings&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2178123867</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;TV&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;city&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;San Francisco&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;price_amount&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1000</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;price_currency&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;usd&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre>
+<p>JSON 是純文字的結構化格式，任何語言都能輕易解析，和 JavaScript 已經沒有綁定關係。</p>
+<blockquote>
+<p><strong>和原文不同</strong>：原文的 JSON 範例裡用 <code>#</code> 寫註解。<strong>JSON 標準不允許任何註解</strong>，真的這樣回傳，對方的解析器會直接報錯。</p>
+</blockquote>
+<p><strong>身分驗證</strong>：使用者在設定頁拿到一組 <strong>API 金鑰（API key）</strong>，一串很長的隨機字串，等於程式用的密碼。每個請求都把它放在 HTTP 標頭（header）裡，伺服器查這把金鑰屬於誰，就以那個人的身分執行。</p>
+<p>直接用 HTTP 函式庫呼叫 API 長這樣：</p>
+<pre class="code"><span class="code-lang">python</span><code><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+
+<span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+    <span class="s2">&quot;https://api.steveslist.com/v1/listings/&quot;</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;TV&quot;</span><span class="p">,</span> <span class="s2">&quot;city&quot;</span><span class="p">:</span> <span class="s2">&quot;San Francisco&quot;</span><span class="p">,</span> <span class="s2">&quot;price_amount&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span> <span class="s2">&quot;price_currency&quot;</span><span class="p">:</span> <span class="s2">&quot;usd&quot;</span><span class="p">},</span>
+    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;X-Steveslist-API-Key&quot;</span><span class="p">:</span> <span class="s2">&quot;YOUR_API_KEY&quot;</span><span class="p">},</span>
+<span class="p">)</span>
+</code></pre>
+<p>原文對 API 只講到這裡。真的要對外開放 API，還得處理這些：</p>
+<ul>
+<li><strong>一定要走 HTTPS</strong>。金鑰放在標頭裡，沒加密就等於明文廣播密碼。</li>
+<li><strong>金鑰要能撤銷與輪替</strong>，最好能限制權限範圍（例如唯讀）。伺服器端存金鑰時也應該只存雜湊值，道理和密碼一樣。</li>
+<li><strong>限流（rate limiting）</strong>：限制每把金鑰每分鐘能打幾次，否則一支寫壞的迴圈就能拖垮你。</li>
+<li><strong>分頁（pagination）</strong>：「取得所有商品」不能真的一次回傳全部。</li>
+<li><strong>冪等（idempotency）</strong>：對方網路逾時後重送「建立訂單」，不能建出兩筆。常見做法是請求帶一個唯一的 idempotency key，伺服器看到重複的 key 就回傳上次的結果。這個觀念在後面的 webhook 和 pub/sub 會一再出現。</li>
+<li><strong>版本管理</strong>：<code>/v1/</code> 讓你之後能推出不相容的 <code>/v2/</code> 而不弄壞既有使用者。</li>
+</ul>
+<h3 id="s-7">Client library</h3>
+<p>要每個開發者自己組 HTTP 請求太麻煩，所以平台通常會提供各語言的 <strong>client library</strong>（常被稱為 SDK），把 API 包成一般的函式呼叫：</p>
+<pre class="code"><span class="code-lang">python</span><code><span class="kn">import</span><span class="w"> </span><span class="nn">steveslist</span>
+
+<span class="n">listing</span> <span class="o">=</span> <span class="n">steveslist</span><span class="o">.</span><span class="n">Listing</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;TV&quot;</span><span class="p">,</span> <span class="n">city</span><span class="o">=</span><span class="s2">&quot;San Francisco&quot;</span><span class="p">,</span>
+    <span class="n">price_amount</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">price_currency</span><span class="o">=</span><span class="s2">&quot;usd&quot;</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;YOUR_API_KEY&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre>
+<p>函式庫內部還是在發一樣的 HTTP 請求。它的價值在於把重試、錯誤處理、分頁、簽章驗證這些容易寫錯的事一次做對。代價是平台方得同時維護很多語言的版本，所以現在多半是先寫一份 API 規格（例如 OpenAPI），再用工具自動產生各語言的函式庫。</p>
+<h2 id="s-8">Webhook：平台主動通知你</h2>
+<p>API 是「你問平台」。但很多時候使用者要的是「有事發生時平台告訴我」，例如商品賣出時自動寄感謝信並通知倉庫出貨。</p>
+<p>笨方法是<strong>輪詢（polling）</strong>：每隔幾秒問一次「有新訂單嗎？」。絕大多數的回答都是「沒有」，白白浪費雙方資源，而且有延遲。</p>
+<p><strong>Webhook 就是反過來的 API</strong>：使用者先告訴平台一個網址，事件發生時平台對這個網址發一個 HTTP 請求，內容是事件的細節（商品編號、價格、買家地址…）。使用者在那個網址架一台伺服器，收到後執行自己的邏輯。</p>
+<pre class="code"><code>買家付款 ──&gt; 平台伺服器 ──(HTTP POST 事件內容)──&gt; 賣家的 webhook 伺服器 ──&gt; 寄信、出貨
+</code></pre>
+<p>Webhook 有兩個麻煩：安全和可靠。</p>
+<h3 id="s-9">安全：怎麼知道這個請求真的是平台發的</h3>
+<p>賣家的 webhook 網址是公開在網路上的，任何人知道網址就能送假的「已付款」通知來騙貨。網址不公開不算防護，「藏起來」不等於「安全」。</p>
+<p>解法是<strong>簽章</strong>：</p>
+<ol>
+<li>賣家啟用 webhook 時，平台產生一把隨機的<strong>共享密鑰</strong>，只有平台和賣家知道。</li>
+<li>平台每次發 webhook，用密鑰和請求內容算出一個簽章，隨請求一起送出。</li>
+<li>賣家的伺服器用同一把密鑰、同樣的算法自己算一次，和收到的簽章比對。一致才處理，不一致就丟掉。</li>
+</ol>
+<p>沒有密鑰的人算不出正確的簽章，所以偽造不了。</p>
+<blockquote>
+<p><strong>和原文不同</strong>：</p>
+<ul>
+<li>原文說 HMAC 是「一種密碼學雜湊函式」。不精確。<strong>HMAC 是一種用雜湊函式搭建出來的訊息驗證碼（MAC）構造</strong>，實際使用時會講明底層的雜湊，例如 HMAC-SHA256。差別在於：單純的雜湊誰都能算，HMAC 要有密鑰才能算。</li>
+<li>原文把簽章放在請求的 JSON 內容裡。實務上簽章都放在 <strong>HTTP 標頭</strong>，因為簽的對象就是整個請求內容，放在內容裡會變成「簽章要簽到自己」。Stripe 用 <code>Stripe-Signature</code> 標頭，GitHub 用 <code>X-Hub-Signature-256</code>。</li>
+<li>嚴格說這是「訊息驗證碼」而不是「數位簽章」。雙方持有同一把密鑰，所以只能證明「是知道密鑰的人發的」，不能向第三方證明是誰發的。業界習慣上還是叫它 webhook 簽章。</li>
+</ul>
+</blockquote>
+<p>原文漏掉的三個實作細節，每一個漏了都會出事：</p>
+<ul>
+<li><strong>防重放（replay）</strong>：攻擊者就算偽造不了，也可以攔下一個真的請求之後原封不動再送一次。所以簽章要連同<strong>時間戳</strong>一起簽，接收方拒絕太舊的請求。Stripe 的做法是標頭裡帶 <code>t=時間戳,v1=簽章</code>，官方函式庫預設只接受 5 分鐘內的請求。</li>
+<li><strong>用原始的請求內容驗證</strong>：必須拿收到的原始位元組去算。如果先把 JSON 解析成物件再轉回字串，欄位順序或空白可能改變，簽章就永遠對不上。這是最常見的踩坑。</li>
+<li><strong>用固定時間的比較函式</strong>：比對簽章時不要用一般的字串相等，要用語言提供的 constant-time 比較（例如 Python 的 <code>hmac.compare_digest</code>），避免從回應時間的細微差異被猜出簽章。</li>
+</ul>
+<p>還有一點原文說得很對：<strong>驗證程式是賣家自己寫的</strong>，平台只能提供範例和函式庫，沒辦法強迫對方驗證。</p>
+<h3 id="s-10">可靠：送失敗了怎麼辦</h3>
+<p>連不上對方伺服器怎麼辦？連上了但對方回錯誤？送出去後對方卡了二十秒然後斷線，到底有沒有收到？</p>
+<p>平台必須選一種保證。常見的是<strong>至少一次（at-least-once）</strong>：只要不確定成功，就一直重試（次數有上限）。副作用是<strong>同一個 webhook 可能送到兩次</strong>，所以接收方必須自己處理重複。</p>
+<p>補充三種傳遞保證，後面 pub/sub 也是同一套觀念：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>保證</th>
+<th>意思</th>
+<th>代價</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>至多一次（at-most-once）</td>
+<td>送一次就不管了</td>
+<td>可能掉訊息</td>
+</tr>
+<tr>
+<td>至少一次（at-least-once）</td>
+<td>不確定就重送</td>
+<td>可能重複</td>
+</tr>
+<tr>
+<td>剛好一次（exactly-once）</td>
+<td>不掉也不重複</td>
+<td>在不可靠的網路上無法單靠傳送端做到</td>
+</tr>
+</tbody>
+</table></div>
+<p>實務上的答案幾乎都是「至少一次 + 接收方做成冪等」。接收方的標準做法：</p>
+<ul>
+<li>每個事件帶唯一的 event ID，處理前先查「這個 ID 處理過了嗎」，處理過就直接回成功。</li>
+<li><strong>先快速回 200，再處理</strong>。收到後把事件丟進自己的佇列就回應，耗時的工作在背景做。否則處理太久會被平台當成逾時而重送。</li>
+<li>不要假設事件會按順序到達。</li>
+<li>平台端重試時通常採用<strong>指數退避</strong>（間隔越拉越長），連續失敗太久就停用這個網址並通知使用者。</li>
+</ul>
+<h2 id="s-11">用密碼登入</h2>
+<p>原文只談密碼登入，其他方式（如 OAuth）略過。</p>
+<p><strong>鐵則：任何地方都不能存明文密碼</strong>。資料庫不行、日誌檔不行、任何中間系統都不行。密碼外洩的傷害不只是你這個站：很多人在各個網站用同一組密碼，你被偷等於他們在別處的帳號也被偷。</p>
+<p>做法是存<strong>雜湊值</strong>。雜湊函式是單向的：從輸入算出雜湊很容易，從雜湊反推輸入實際上做不到。登入時把使用者輸入的密碼再算一次雜湊，和資料庫裡存的比對。資料庫被偷，攻擊者拿到的也只是雜湊值。</p>
+<blockquote>
+<p><strong>原文過度簡化的地方</strong>：原文說「用 bcrypt 這類雜湊函式」就帶過了，沒講為什麼是 bcrypt，也完全沒提「鹽」。這兩點正是密碼儲存的核心。</p>
+</blockquote>
+<p><strong>為什麼不能用一般的雜湊（如 SHA-256）</strong>：一般雜湊的設計目標是「快」，一張顯示卡每秒能算幾十億次。攻擊者拿到雜湊後不需要「反推」，只要把常見密碼一個個算過去比對就好，快的雜湊等於幫攻擊者加速。密碼要用<strong>故意設計得很慢、而且慢的程度可調</strong>的專用演算法，讓每猜一次都要付出可觀的成本。</p>
+<p><strong>鹽（salt）</strong>：替每個使用者產生一段隨機值，和密碼一起雜湊，鹽本身明文存在旁邊。作用有兩個：</p>
+<ul>
+<li>相同的密碼會得到不同的雜湊，攻擊者看不出誰和誰用同一組密碼。</li>
+<li>攻擊者不能用事先算好的對照表（彩虹表），也不能算一次就同時比對所有人，必須對每個人分別重算。</li>
+</ul>
+<p>bcrypt、Argon2 這類演算法會自動產生鹽，並把鹽和參數編在輸出的字串裡，所以<strong>不要自己實作</strong>，用語言生態裡成熟的函式庫，呼叫它的 <code>hash</code> 和 <code>verify</code> 就好。</p>
+<p><strong>現在該選哪個</strong>（依 OWASP 的密碼儲存建議）：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>演算法</th>
+<th>定位</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Argon2id</td>
+<td>新系統的首選。除了耗時間還耗記憶體，更能抵抗用顯示卡或專用硬體的大量猜測</td>
+</tr>
+<tr>
+<td>scrypt</td>
+<td>Argon2id 不可用時的替代</td>
+</tr>
+<tr>
+<td>bcrypt</td>
+<td>舊系統常見，仍可接受。注意它只處理密碼的前 72 個位元組</td>
+</tr>
+<tr>
+<td>PBKDF2</td>
+<td>需要符合 FIPS 規範時使用</td>
+</tr>
+</tbody>
+</table></div>
+<p>具體參數（記憶體大小、迭代次數）會隨硬體進步而調高，要用時去看 OWASP 當下的建議，不要抄舊文章上的數字。</p>
+<p><strong>別把密碼寫進日誌</strong>。這是最容易犯的錯：為了除錯把每個請求的所有參數都記下來，登入請求裡的密碼就跟著進了日誌。原文舉 Facebook 當例子，這件事是真的：2019 年 3 月資安記者 Brian Krebs 揭露、Facebook 隨後承認，有數億個帳號的密碼以明文留在內部日誌裡，部分可追溯到 2012 年，上萬名員工有權限搜尋到。Facebook 的密碼資料庫本身有正確地雜湊加鹽，出事的是日誌。所以防護要做在日誌層：對 <code>password</code>、<code>token</code>、<code>authorization</code> 這類欄位一律遮蔽。</p>
+<p>原文沒提、但登入系統一定要有的：</p>
+<ul>
+<li>登入失敗的限流與鎖定，擋住線上暴力猜測。</li>
+<li>多因素驗證（MFA）。</li>
+<li>註冊與改密碼時比對已外洩的密碼清單，拒絕 <code>12345</code> 這種密碼。</li>
+<li>演算法參數調高後，在使用者下次成功登入時順手用新參數重算雜湊。</li>
+</ul>
+<h2 id="s-12">主資料庫怎麼長大</h2>
+<p>主資料庫是關聯式資料庫（原文用 MySQL）。資料庫不是魔法，它是跑在電腦上的程式，資料多了硬碟會滿、查詢會慢。</p>
+<p>一開始最簡單的做法是換一台更大的機器，這叫<strong>垂直擴充（scale up）</strong>。它的好處是完全不用改程式，所以該用就用。但單機有上限，而且越頂級的機器越貴。超過之後只能把資料分散到多台機器，叫<strong>水平擴充（scale out）</strong>。</p>
+<p>先釐清三個容易搞混的概念：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>解決的問題</th>
+<th>做法</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>分片 sharding</td>
+<td>資料太多、寫入太多，一台裝不下</td>
+<td>把資料<strong>切開</strong>，每台放不同的一部分</td>
+</tr>
+<tr>
+<td>複寫 replication</td>
+<td>機器會壞；讀取量太大</td>
+<td>把<strong>同一份</strong>資料即時複製到多台</td>
+</tr>
+<tr>
+<td>備份 backup</td>
+<td>整個毀掉、或資料被改壞</td>
+<td>定期把資料<strong>另存</strong>到別處</td>
+</tr>
+</tbody>
+</table></div>
+<p>大型系統三個都會用：資料先分片，每個分片再各自複寫成好幾份，再加上定期備份。</p>
+<h3 id="s-13">分片</h3>
+<p>把資料切成一塊一塊（shard），每塊放在不同的機器上，全部機器合稱一個<strong>叢集（cluster）</strong>。</p>
+<p><strong>用什麼切</strong>（分片鍵，shard key）取決於你的查詢方式。原文的例子是按使用者切：同一個使用者的個人資料、商品、訊息都在同一台機器上，這樣「查某個使用者的東西」只需要問一台。不屬於任何使用者的資料（例如「今日特賣」）可以用別的鍵切，量小的話乾脆不切。</p>
+<p><strong>誰知道資料在哪台</strong>：需要一層路由。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>做法</th>
+<th>優點</th>
+<th>缺點</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>應用伺服器自己帶著分片對照表</td>
+<td>少一次轉送，比較快</td>
+<td>對照表一改，所有應用伺服器都要同步更新</td>
+</tr>
+<tr>
+<td>中央路由器，所有查詢先送給它</td>
+<td>對照表只需改一個地方</td>
+<td>多一次轉送；路由器本身不能掛</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>怎麼決定誰去哪個分片</strong>，原文只舉了「奇數 ID 去一號、偶數去二號」和「特定大戶獨佔一個分片」。整理成三種策略會更清楚：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>策略</th>
+<th>做法</th>
+<th>優點</th>
+<th>缺點</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>範圍</td>
+<td>ID 1 到 10000 在一號，10001 到 20000 在二號</td>
+<td>簡單；範圍查詢方便</td>
+<td>容易不均，新資料全擠在最後一個分片</td>
+</tr>
+<tr>
+<td>雜湊</td>
+<td>對 ID 做雜湊再取餘數</td>
+<td>分布均勻</td>
+<td>範圍查詢要問所有分片；增加分片時麻煩（見下）</td>
+</tr>
+<tr>
+<td>對照表</td>
+<td>另外存一張「誰在哪個分片」的表</td>
+<td>最有彈性，可以把大戶單獨搬走</td>
+<td>多一次查表；對照表本身要高可用</td>
+</tr>
+</tbody>
+</table></div>
+<p>原文說的「絕大多數隨機分配，但某個大戶獨佔一個分片」，就是雜湊加上對照表的例外。</p>
+<p>原文沒講的坑：<strong>用取餘數分片，增加機器時幾乎所有資料都要搬家</strong>。從 2 台變 3 台，<code>ID % 2</code> 和 <code>ID % 3</code> 的結果大多不同。常見的解法是<strong>一致性雜湊（consistent hashing）</strong>，或是先切成很多個「邏輯分片」（例如 1024 個）再把邏輯分片對應到實體機器，加機器時只搬動一部分邏輯分片。</p>
+<p><strong>分片的真正代價</strong>（原文完全沒提，但這才是不該輕易分片的原因）：</p>
+<ul>
+<li><strong>跨分片的查詢很痛</strong>。「列出全站最新的 20 件商品」得問每一個分片再合併。</li>
+<li><strong>跨分片的 JOIN 和交易基本上沒了</strong>。A 使用者付錢給 B 使用者，兩人在不同分片，就不再是一個單純的資料庫交易。</li>
+<li><strong>分片鍵選錯很難改</strong>，等於整個資料庫重新搬一次。</li>
+<li>維運複雜度大增：改表結構、備份、監控都要乘上分片數。</li>
+</ul>
+<p>所以實務上的順序通常是：加索引和改寫慢查詢 → 加快取 → 換更大的機器 → 加唯讀副本分擔讀取 → 把不相關的資料表拆到不同的資料庫 → <strong>最後才分片</strong>。很多產品一輩子都走不到最後一步。</p>
+<p><strong>線上搬資料的步驟</strong>（分片滿了要拆、或要換資料庫時通用）：</p>
+<ol>
+<li><strong>雙寫</strong>：新資料同時寫到舊的和新的，讀取仍然只讀舊的。</li>
+<li><strong>回填</strong>：把既有的舊資料複製到新的那邊，雙寫持續進行。</li>
+<li><strong>驗證</strong>：確認兩邊資料一致。可以比對快照，也可以讓每次讀取同時讀兩邊、不一致就告警。</li>
+<li><strong>切換讀取</strong>到新的那邊，雙寫繼續，萬一出事還能切回去。</li>
+<li>穩定後停止雙寫，刪掉舊的。</li>
+</ol>
+<p>這個「雙寫 → 回填 → 驗證 → 切換 → 清理」的模式值得記起來，幾乎所有不停機的資料遷移都是這個套路。</p>
+<p>有些資料庫內建自動分片，不必自己做路由，例如 MySQL 上的 Vitess、PostgreSQL 的 Citus，以及原生就是分散式的 CockroachDB、MongoDB、Cassandra。</p>
+<h3 id="s-14">複寫</h3>
+<p>把同一份資料幾乎即時地複製到多台機器。好處有兩個：</p>
+<ul>
+<li><strong>容錯</strong>：一台掛了，其他副本馬上頂上，使用者可能完全沒感覺。</li>
+<li><strong>分擔讀取</strong>：讀取請求可以分散到各個副本。</li>
+</ul>
+<blockquote>
+<p><strong>原文沒說清楚的地方</strong>：複寫只能擴充<strong>讀取</strong>能力。每一筆寫入還是要寫到每一個副本，所以加再多副本，寫入能力也不會增加。寫入撐不住時靠的是分片。</p>
+</blockquote>
+<p>原文用了一個很好的比喻，值得留著：想像一間銀行的客服中心，每個客服都是一台資料庫，客戶打電話來轉帳或查餘額，客服之間靠互相打電話同步帳本。資料庫叢集遇到的問題和這間客服中心一模一樣：</p>
+<ul>
+<li>兩個客戶同時打給兩個客服，要改同一筆資料，聽誰的？</li>
+<li>所以規定只有一位「組長」能受理轉帳，其他人只能回答查詢。那組長剛收到一筆轉帳、還沒告訴別人就昏倒了呢？</li>
+<li>某個客服恍神了幾秒，漏聽了組長的幾次更新呢？</li>
+<li>如果我們根本無法確定哪個客服還醒著呢？</li>
+</ul>
+<p>這些問題對應到實際的架構選擇：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>架構</th>
+<th>做法</th>
+<th>特性</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>單一主節點（leader-follower）</td>
+<td>只有主節點接受寫入，其他副本只能讀</td>
+<td>最常見也最單純，不會有寫入衝突；主節點掛了要選新的</td>
+</tr>
+<tr>
+<td>多主節點（multi-leader）</td>
+<td>多台都能寫</td>
+<td>適合跨地區部署；必須處理寫入衝突</td>
+</tr>
+<tr>
+<td>無主節點（leaderless）</td>
+<td>任何節點都能寫，靠多數決判定</td>
+<td>Cassandra、DynamoDB 這類；可用性高，一致性較弱</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>同步還是非同步</strong>是最大的決定。先講這兩個詞本身，它們在系統設計裡到處出現，意思始終一樣：</p>
+<ul>
+<li><strong>同步</strong>：發起的人<strong>等</strong>事情做完才繼續。像是去郵局寄信，然後坐在郵局等到對方簽收才回家。</li>
+<li><strong>非同步</strong>：發起的人<strong>不等</strong>，交代完就去做別的事。真實的郵局就是非同步的，頂多事後通知你「已簽收」。</li>
+</ul>
+<p>套用到複寫：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>同步複寫</th>
+<th>非同步複寫</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>做法</td>
+<td>主節點等所有副本都寫完，才回覆「寫入成功」</td>
+<td>主節點自己寫完就回覆成功，複製在背景進行</td>
+</tr>
+<tr>
+<td>速度</td>
+<td>慢</td>
+<td>快</td>
+</tr>
+<tr>
+<td>掉資料的風險</td>
+<td>回覆成功就一定都寫進去了</td>
+<td>主節點回覆成功後、複製完成前掛掉，這筆資料就消失了，而客戶端以為寫成功了</td>
+</tr>
+<tr>
+<td>副本故障時</td>
+<td>任何一台副本慢或掛，寫入就卡住</td>
+<td>不受影響</td>
+</tr>
+</tbody>
+</table></div>
+<blockquote>
+<p><strong>原文過度簡化的地方</strong>：原文把同步複寫描述成「比較慢但比較安全」。但「等<strong>所有</strong>副本」有個嚴重的代價：只要有一台副本故障，整個系統就不能寫入，可用性反而變差。所以實務上幾乎沒有人用純粹的全同步，而是用<strong>半同步（semi-synchronous）</strong>：只要有<strong>至少一台</strong>副本確認收到就回覆成功，其餘的繼續非同步。這樣保證資料至少存在兩台機器上，又不會被最慢的那台拖累。</p>
+</blockquote>
+<p>原文沒提到、但一用唯讀副本就會遇到的問題：<strong>複寫延遲（replication lag）</strong>。非同步複寫下，副本的資料會比主節點晚一點點。使用者剛改完暱稱，下一個請求剛好被分到還沒同步的副本，就會看到舊的暱稱，以為沒改成功。常見的處理是「自己剛寫過的資料，短時間內從主節點讀」。</p>
+<p>選哪種取決於這筆資料錯了有多嚴重：按讚數慢幾秒或差一兩個沒關係，帳戶餘額就不行。</p>
+<p>最後一個坑：主節點掛掉後，如果兩台副本都以為自己是新的主節點，就會各自接受寫入，資料從此分岔，這叫<strong>腦裂（split brain）</strong>。要正確地「選出唯一的主節點」得靠共識演算法（Raft、Paxos），這也是原文比喻裡「無法確定誰還醒著」那個問題的正式解法。想深入的話，Martin Kleppmann 的《Designing Data-Intensive Applications》第 5 章是這個主題最好的教材。</p>
+<h3 id="s-15">備份</h3>
+<p>備份是<strong>定期</strong>把整個資料庫複製一份，存到<strong>遠離正式環境</strong>的地方，是最後一道防線。</p>
+<p><strong>為什麼有了複寫還要備份</strong>：原文的說法是「複寫防單機故障，備份防機房全毀」。這是對的，但還有一個更常見、原文沒明講的理由：<strong>複寫會忠實地複製你的錯誤</strong>。工程師不小心執行了沒加條件的 <code>DELETE</code>、程式有 bug 把資料寫壞、被勒索軟體加密，這些變更會在幾毫秒內同步到每一個副本。這種時候只有備份救得了你。</p>
+<p>用原文的銀行比喻：複寫是接電話時同時抄在好幾本帳本上，怕弄丟其中一本；備份是每天把帳本影印一份鎖進保險櫃。</p>
+<p>從備份還原是慢的，使用者一定會感覺到：系統在還原完成前可能整個停擺。</p>
+<blockquote>
+<p><strong>原文過度簡化的地方</strong>：原文說還原後「會失去最後一次備份之後的所有更新」。只有每日完整備份時確實如此，但現在的標準做法是<strong>完整備份加上持續保存資料庫的變更日誌</strong>（MySQL 的 binlog、PostgreSQL 的 WAL），這樣可以還原到任意一個時間點（point-in-time recovery），損失可以縮到幾秒到幾分鐘。雲端的託管資料庫大多內建這個功能。</p>
+</blockquote>
+<p>談備份時會用到兩個指標：</p>
+<ul>
+<li><strong>RPO</strong>（Recovery Point Objective）：最多能接受掉多久的資料。決定備份的頻率。</li>
+<li><strong>RTO</strong>（Recovery Time Objective）：最多能接受停機多久。決定還原流程要多快。</li>
+</ul>
+<p>以及三條實務守則：</p>
+<ul>
+<li><strong>沒演練過還原的備份不算備份</strong>。定期真的拿備份還原一次，很多團隊是出事當天才發現備份檔是壞的。</li>
+<li><strong>備份要放在不同的地方</strong>：不同機房、不同雲端帳號。和正式資料放在一起的備份會一起毀掉、一起被刪。</li>
+<li>備份裡有完整的使用者資料，要加密，存取權限要比正式環境更嚴。</li>
+</ul>
+<h2 id="s-16">其他的資料系統</h2>
+<h3 id="s-17">全文搜尋</h3>
+<p>關聯式資料庫擅長<strong>精確</strong>的查詢：某個使用者最近 90 天的商品、某個編號的商品、舊金山每天新增幾件電子產品。這些查詢的條件都是等於、大於這種明確的比較。</p>
+<pre class="code"><span class="code-lang">sql</span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">items</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">user_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">145122</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">created</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">NOW</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">INTERVAL</span><span class="w"> </span><span class="mi">90</span><span class="w"> </span><span class="k">DAY</span><span class="p">;</span>
+</code></pre>
+<p>但使用者在搜尋框打「二手電視」時，要的是另一種東西。用 SQL 的 <code>LIKE '%二手電視%'</code> 來做會有三個問題：</p>
+<ul>
+<li><strong>只比對得到完全相同的字串</strong>。「電視 二手」「2手電視」「二手電是」（打錯字）全都找不到。</li>
+<li><strong>沒有相關性排序</strong>。使用者要的不是「最新的在前」，而是「最符合的在前」，這是個模糊的概念。</li>
+<li><strong>慢</strong>。開頭是 <code>%</code> 的 <code>LIKE</code> 用不到一般的索引，只能把整張表每一列掃過一遍。（這點原文沒講，但這才是資料一多就撐不住的主因。）</li>
+</ul>
+<p>所以需要專門的<strong>搜尋引擎</strong>，原文舉的是 Elasticsearch。原文說「不用管它怎麼運作」，但知道核心原理其實不難，而且很有幫助：</p>
+<ul>
+<li><strong>倒排索引（inverted index）</strong>：一般索引是「這篇文件裡有哪些詞」，倒排索引是反過來記「這個詞出現在哪些文件」。查詢時直接查詞，不用掃全部文件。和書本最後面的索引是同一個道理。</li>
+<li><strong>分析（analysis）</strong>：建索引前先把文字切成詞，轉小寫、把 running 和 runs 還原成 run、去掉沒意義的字。查詢字串也做同樣的處理，所以大小寫和詞形變化不影響結果。</li>
+<li><strong>相關性評分</strong>：預設用 BM25 演算法，大意是「查詢的詞在這篇文件裡出現得越多、在所有文件裡越罕見，分數越高」。</li>
+<li><strong>模糊比對</strong>：用編輯距離容忍打錯字。</li>
+</ul>
+<p>對中文要特別注意：英文靠空白切詞，中文沒有空白，必須額外裝中文分詞器，否則搜尋效果會很差。</p>
+<p><strong>那為什麼不乾脆全部放進 Elasticsearch？</strong> 因為它不適合當主資料庫：</p>
+<ul>
+<li>沒有關聯式資料庫那種跨多筆資料的交易，也不擅長 JOIN。</li>
+<li>寫入後不是立刻查得到，而是「近即時」，預設大約一秒後才出現在搜尋結果中。</li>
+<li>修改一筆資料實際上是整筆重建索引。</li>
+</ul>
+<blockquote>
+<p><strong>原文的說法，要打折看</strong>：原文說 Elasticsearch「比較不可靠、在大規模下較容易掉資料」「寫入慢很多」。前者在 2014、2015 年前後確實是有名的問題（當時有獨立測試證實在網路分割下會掉資料），之後的版本重寫了叢集協調機制，已經改善很多；後者過於籠統，批次寫入其實很快。不過結論不變：<strong>把它當成可以重建的副本，不要當成唯一的真相來源</strong>。</p>
+</blockquote>
+<p><strong>標準架構是兩個都用</strong>：</p>
+<ul>
+<li>新資料一律先寫進 SQL 主資料庫，它是唯一的真相來源。</li>
+<li>精確的查詢（我的商品列表、驗證密碼）讀 SQL。</li>
+<li>在背景把資料複製一份到搜尋引擎，搜尋框的查詢走搜尋引擎。</li>
+<li>搜尋引擎掉了幾筆資料，頂多是搜尋結果少了幾項，重新同步就好，不是災難。</li>
+</ul>
+<p><strong>怎麼把資料同步過去</strong>：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>做法</th>
+<th>說明</th>
+<th>取捨</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>定時批次</td>
+<td>每隔幾分鐘把有變動的資料撈出來寫過去</td>
+<td>最簡單；有延遲</td>
+</tr>
+<tr>
+<td>變更資料擷取（CDC）</td>
+<td>讀資料庫的變更日誌，有變動就即時同步（例如 Debezium）</td>
+<td>近即時；要多維運一套系統</td>
+</tr>
+<tr>
+<td>應用程式雙寫</td>
+<td>程式寫完 SQL 再寫搜尋引擎</td>
+<td>看似最簡單，但<strong>不建議</strong>：第二步失敗時兩邊就不一致，而且很難察覺</td>
+</tr>
+</tbody>
+</table></div>
+<p>原文提到 Craigslist 上架後顯示「15 分鐘內會出現在搜尋結果」，並推測背後是 SQL 加上 Elasticsearch 類的引擎。架構的推測方向是對的，延遲的成因則是<strong>原文作者的猜測</strong>。可以查到的是，Craigslist 用的搜尋引擎是 Sphinx，主資料存在 MySQL（依 2009 到 2012 年間的公開資料，現況未查證）。</p>
+<p>補充兩點：</p>
+<ul>
+<li><strong>不是一開始就需要搜尋引擎</strong>。MySQL 有 <code>FULLTEXT</code> 索引，PostgreSQL 有內建的全文搜尋和 <code>pg_trgm</code> 模糊比對。資料量不大、搜尋需求單純時，這些就夠用了，還省掉同步資料的麻煩。原文說 SQL 資料庫「不擅長全文搜尋」，更準確的說法是「內建的全文搜尋功能有限，到一定規模和需求後才需要專門的引擎」。</li>
+<li>2021 年 Elastic 更改授權條款後，AWS 另外分支出 <strong>OpenSearch</strong>。兩者概念相同，選型時會同時看到這兩個名字。</li>
+</ul>
+<h3 id="s-18">資料倉儲</h3>
+<p>要了解生意狀況，就得算全站的統計：每天各國各城市新增多少商品？每個月註冊的使用者有多少人在 90 天內上架過商品？</p>
+<p>這種查詢不該對主資料庫跑，理由有兩個：</p>
+<ul>
+<li><strong>會拖垮線上服務</strong>。分析師一個掃全表的大查詢，可以讓正式資料庫慢到使用者打不開網頁。</li>
+<li><strong>主資料庫的設計本來就不適合</strong>。擅長「快速讀寫少數幾筆」的資料庫，處理「掃過幾億筆做加總」時會非常慢。</li>
+</ul>
+<p>原文只講了現象，沒講原因。這其實是兩種完全不同的工作負載：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th>線上交易處理（OLTP）</th>
+<th>線上分析處理（OLAP）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>典型查詢</td>
+<td>讀寫某一位使用者的幾筆資料</td>
+<td>掃過幾億筆，做分組與加總</td>
+</tr>
+<tr>
+<td>查詢量</td>
+<td>每秒非常多，每個都很小</td>
+<td>很少，但每個都很大</td>
+</tr>
+<tr>
+<td>要求</td>
+<td>毫秒級回應、資料即時</td>
+<td>幾秒到幾分鐘可接受、資料晚一點沒關係</td>
+</tr>
+<tr>
+<td>儲存方式</td>
+<td><strong>列式（row-oriented）</strong>：一筆資料的所有欄位存在一起</td>
+<td><strong>欄式（columnar）</strong>：同一個欄位的所有值存在一起</td>
+</tr>
+<tr>
+<td>代表</td>
+<td>MySQL、PostgreSQL</td>
+<td>BigQuery、Snowflake、Redshift、ClickHouse</td>
+</tr>
+</tbody>
+</table></div>
+<p>關鍵在儲存方式。算「每天的銷售總額」只需要日期和金額兩個欄位。列式儲存得把每一筆資料的所有欄位都讀出來；欄式儲存只讀那兩欄，而且同一欄的值型別相同、重複度高，壓縮率很好。這就是資料倉儲快上幾十到幾百倍的原因。</p>
+<p>**資料倉儲（data warehouse）**就是專門做這種大查詢的資料庫。資料每天（或更頻繁）從主資料庫複製過去，分析師在上面想怎麼查就怎麼查，不影響線上服務。</p>
+<blockquote>
+<p><strong>原文已過時的地方</strong>：原文用的是 Hive，並列出 Presto、Impala、Redshift 為替代方案。這是 2020 年、而且偏 Hadoop 生態的清單。現在新建資料倉儲很少選 Hive，主流是雲端託管的 BigQuery、Snowflake、Redshift，自架常見的是 ClickHouse，Presto 的主要分支在 2020 年底改名為 Trino。另外，Hive 嚴格說不是資料庫引擎，而是架在 Hadoop 檔案系統上的一層 SQL 查詢介面。</p>
+</blockquote>
+<p>原文講的演進過程很真實，值得記住：創業第一年直接對正式資料庫跑分析，資料少所以沒事；直到某天一個大查詢把正式資料庫打掛，才去建資料倉儲。中間其實有個便宜的過渡方案原文沒提：<strong>先開一台專門給分析用的唯讀副本</strong>，就能隔離大查詢對線上的影響，等資料量真的大到副本也跑不動再上資料倉儲。</p>
+<h3 id="s-19">三個資料系統的分工</h3>
+<p>同一份資料存在三個地方，各自回答不同類型的問題：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>系統</th>
+<th>回答的問題</th>
+<th>資料新鮮度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SQL 主資料庫</td>
+<td>精確、小範圍、要最新最準的</td>
+<td>即時，唯一的真相來源</td>
+</tr>
+<tr>
+<td>搜尋引擎</td>
+<td>模糊的文字搜尋、依相關性排序</td>
+<td>落後幾秒到幾分鐘</td>
+</tr>
+<tr>
+<td>資料倉儲</td>
+<td>橫跨全部資料的統計分析</td>
+<td>落後幾分鐘到一天</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s-20">背景工作</h2>
+<h3 id="s-21">Pub/Sub：事件發生後的連鎖動作</h3>
+<p>一個動作常會引發一串後續動作：新使用者註冊要寄歡迎信；新商品上架要通知訂閱了相關關鍵字的人，還要跑反詐欺檢查；商品賣出要發 webhook 給賣家。</p>
+<p>這些後續動作技術上可以由處理請求的那台伺服器<strong>同步</strong>做完，但這樣不好。原文說「有兩個理由」卻只寫了一個，補齊如下：</p>
+<ul>
+<li><strong>慢</strong>。「找出所有訂閱了電視通知的人並逐一通知」可能要好幾秒，使用者只是按了上架，沒理由等這個。</li>
+<li><strong>耦合</strong>。寄信服務暫時故障，不該讓使用者的註冊跟著失敗。而且每加一個後續動作就得回頭改註冊的程式，註冊的程式會越來越肥，也越來越容易被不相干的改動弄壞。</li>
+</ul>
+<p>**發布與訂閱（publish-subscribe，簡稱 pub/sub）**的做法：</p>
+<ol>
+<li>動作發生時，程式<strong>發布</strong>一個事件，例如 <code>NewListingCreated</code>，內容是發生了什麼事。發布的程式到此為止，不需要知道誰關心這件事。</li>
+<li>想在事件發生時做事的人寫一個<strong>消費者（consumer）</strong>，<strong>訂閱</strong>這類事件。</li>
+<li>中間由**訊息代理（message broker）**負責把事件交給所有訂閱者。</li>
+</ol>
+<pre class="code"><code>使用者註冊 ─&gt; 應用伺服器 ─發布 NewUserSignup─&gt; 訊息代理 ─┬─&gt; 寄歡迎信的消費者
+                                                         └─&gt; 檢查垃圾帳號的消費者
+</code></pre>
+<p>事件怎麼到消費者手上有兩種方式：消費者主動去問代理（<strong>拉</strong>，Kafka 是這種），或代理主動送給消費者（<strong>推</strong>，例如對消費者發 HTTP 請求）。</p>
+<p>好處：</p>
+<ul>
+<li>非必要的動作在背景做，使用者的操作保持流暢。</li>
+<li>程式乾淨：發布事件的一方不用管訂閱者做了什麼。要加新的後續動作，只要多寫一個消費者。</li>
+<li>消費者失敗了，系統可以記下來稍後重試。</li>
+</ul>
+<p>常見的工具有 Kafka、RabbitMQ、AWS 的 SNS 與 SQS、Google Cloud Pub/Sub。附帶釐清一個容易混淆的概念：<strong>訊息佇列</strong>是一個訊息只給一個工作者處理（分攤工作量），<strong>pub/sub</strong> 是一個事件給所有訂閱者各一份（廣播）。很多工具兩種模式都支援。</p>
+<p>原文把 pub/sub 講得只有好處，但它帶來的麻煩才是實作時的重點：</p>
+<ul>
+<li><strong>事件可能重複送達</strong>。和 webhook 一樣，絕大多數系統提供的是至少一次的保證，所以<strong>每個消費者都必須是冪等的</strong>，否則使用者會收到兩封歡迎信，或被扣兩次款。</li>
+<li><strong>事件可能不按順序到達</strong>。「商品已修改」可能比「商品已建立」先到。</li>
+<li><strong>一直失敗的事件要有去處</strong>。重試幾次仍失敗的事件要移到<strong>死信佇列（dead letter queue）</strong>，否則會卡住後面所有的事件。</li>
+<li><strong>系統變成最終一致</strong>。註冊成功的那一瞬間，歡迎信還沒寄、垃圾帳號檢查還沒跑。大部分情況沒關係，但必須清楚哪些事可以晚一點、哪些不行。</li>
+<li><strong>除錯變難</strong>。一件事的處理流程散在好幾個消費者裡，沒有一個地方能看到完整流程，需要靠追蹤 ID 把日誌串起來。</li>
+<li><strong>「寫資料庫」和「發事件」不是一個原子動作</strong>。資料庫寫成功了、但發事件前程式掛了，後續動作就永遠不會發生。標準解法是 <strong>transactional outbox</strong>：在同一個資料庫交易裡，把事件也寫進一張 outbox 資料表，再由另一支程式把表裡的事件送到訊息代理。原文提到「簡單的系統可以把事件存在 SQL 資料表裡」，其實就是這個模式的雛形。</li>
+</ul>
+<h3 id="s-22">排程工作</h3>
+<p>很多事要在固定時間或固定間隔執行：每週寄用量報表、寄行銷信、對訂閱的使用者扣款、把資料從 SQL 複製到搜尋引擎。</p>
+<p>最常見的工具是 Unix 內建的 <strong>cron</strong>。它普及到大家把所有排程工作都叫「cron job」，不管實際上是不是 cron 在跑。</p>
+<p>用 <code>crontab -e</code> 編輯排程，每一行是五個時間欄位加一個指令：</p>
+<pre class="code"><code>*/5 * * * * /path/to/command
+</code></pre>
+<p>五個欄位依序是：分、時、日、月、星期幾。上面這行是每 5 分鐘執行一次。</p>
+<p>最陽春的做法是準備一台專門的「排程伺服器」，把所有工作都放在它的 crontab 裡。原文點出兩個問題：這台機器掛了，你不知道哪些工作跑了、哪些沒跑；工作多到一台跑不完時也沒辦法擴充。</p>
+<p>原文沒列、但寫排程工作一定會踩到的坑：</p>
+<ul>
+<li><strong>重疊執行</strong>。每 5 分鐘跑一次的工作，某次跑了 7 分鐘，下一輪就會和上一輪同時執行。要加鎖（例如 <code>flock</code>），確保同時只有一份在跑。</li>
+<li><strong>漏跑不會補</strong>。機器在排定的時間剛好關機或重開，cron 不會事後補跑。</li>
+<li><strong>失敗時沒有人知道</strong>。cron 預設幾乎不告訴你工作失敗了。要有監控，而且要監控「該跑的有沒有跑」：讓工作每次成功後去打一個監控服務的網址，太久沒打就告警。</li>
+<li><strong>時區與日光節約時間</strong>。排在凌晨 2:30 的工作，在切換日光節約時間的那天可能跑兩次或一次都不跑。伺服器一律用 UTC 可以避開。</li>
+<li><strong>工作要寫成冪等</strong>。因為重試、補跑、手動重跑都會發生，「跑兩次」和「跑一次」的結果必須相同。扣款這類工作尤其重要：要先查這個帳期是否已經扣過。</li>
+<li><strong>環境不同</strong>。cron 執行時的環境變數和你登入的終端機不一樣，手動能跑、排程卻失敗，多半是這個原因。</li>
+</ul>
+<p>工作一多就會換成分散式的排程系統。原文提到 Kubernetes（它有 CronJob 這種資源），其他常見的還有 Airflow 這類工作流程排程器，適合工作之間有先後相依的情況。要注意 Kubernetes 的官方文件自己也說明：CronJob 在少數情況下可能執行兩次或漏掉一次，所以冪等的要求不會因為換了工具而消失。</p>
+<h2 id="s-23">內部管理工具</h2>
+<p>營運平台需要一堆自家專用的管理功能：下架違規商品、退款、客服查看使用者資料。使用者是公司裡的財務、法務、客服等部門，因為功能和自家業務綁得很緊，買不到現成的，只能自己做。</p>
+<p><strong>初期做法</strong>：直接做在主產品裡，資料庫有個 <code>is_employee = True</code> 的欄位，有這個標記的帳號就看得到管理功能。小公司這樣可以，但風險很明顯：</p>
+<ul>
+<li>最高權限和對外的產品跑在同一批伺服器上，主產品只要有一個安全漏洞，後果就會被放大成「攻擊者拿到管理權限」。</li>
+<li>容易出人為疏失，例如員工離職後忘了取消他的標記。</li>
+</ul>
+<p><strong>成熟後的做法</strong>：獨立的管理平台，跑在完全獨立、外界連不到的伺服器上，有另一套更嚴格的身分驗證與授權，要透過 VPN 加上用戶端憑證才進得去。它和主產品讀寫同一個資料庫，所以看到的是同樣的資料。</p>
+<p>原文沒提、但內部工具的重點其實在這幾項：</p>
+<ul>
+<li><strong>稽核日誌</strong>：誰、在什麼時候、對哪個使用者的資料、做了什麼，全部要記錄，而且不能被當事人修改。內部工具最大的風險不是外部駭客，而是內部人員的誤用與濫用。</li>
+<li><strong>最小權限</strong>：不是每個員工都要能做所有事。客服能看訂單，但不該能改金額；用角色來劃分權限（RBAC）。</li>
+<li><strong>敏感操作要雙人覆核</strong>：大額退款、刪除帳號這類動作，需要第二個人核准。</li>
+<li><strong>預設遮蔽個資</strong>：電話、地址預設只顯示部分，要看完整的需要理由並留下紀錄。</li>
+<li>存取方式上，除了 VPN，現在也常見<strong>零信任</strong>的做法：不依賴「在內部網路裡就可信」，而是每個請求都驗證身分（公司的單一登入加上多因素驗證）和裝置狀態。</li>
+</ul>
+<p>另外，原文說內部工具「直接連同一個資料庫」。這是可行的，但要留意：直接改資料庫會<strong>繞過主產品裡的商業邏輯</strong>（驗證規則、該發的事件、該清的快取）。比較穩的做法是讓內部工具呼叫主系統提供的內部 API，由同一套邏輯來處理。這一點是我的補充意見，不是原文的內容。</p>
+<h2 id="s-24">原文沒有涵蓋的部分</h2>
+<p>原文結尾列了「下次再談」的清單，這些也是完整拼圖的一部分，列在這裡當作之後學習的路線圖：</p>
+<ul>
+<li><strong>安全</strong>：HTTPS 與加密、雙因素驗證、SAML（企業單一登入）、密鑰管理。</li>
+<li><strong>伺服器管理</strong>：部署流程、雲端平台（AWS 等）、基礎設施即程式碼（Terraform）、負載平衡器、容器、監控與告警。</li>
+<li><strong>大數據</strong>：MapReduce 類的批次運算、機器學習、使用者行為追蹤。</li>
+</ul>
+<p>我認為還有三樣原文完全沒提、但同樣基本的東西：</p>
+<ul>
+<li><strong>快取</strong>（Redis、Memcached）：通常是系統變慢時第一個該考慮的手段，遠早於分片。</li>
+<li><strong>CDN</strong>：把圖片、JavaScript 這類靜態檔案放到離使用者近的節點。</li>
+<li><strong>負載平衡器</strong>：文中一直說「伺服器們」，把請求分給多台應用伺服器的就是它。它也是應用伺服器能夠水平擴充的前提：應用伺服器本身不保存狀態，狀態都放在資料庫和快取裡，所以隨時可以加減機器。</li>
+</ul>
+<h2 id="s-25">參考來源</h2>
+<ul>
+<li>原文：<a target="_blank" rel="noopener noreferrer" href="https://robertheaton.com/2020/04/06/systems-design-for-advanced-beginners/">Systems design for advanced beginners</a>，Robert Heaton，2020</li>
+<li>密碼儲存建議：<a target="_blank" rel="noopener noreferrer" href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">OWASP Password Storage Cheat Sheet</a></li>
+<li>Facebook 明文密碼事件：<a target="_blank" rel="noopener noreferrer" href="https://krebsonsecurity.com/2019/03/facebook-stored-hundreds-of-millions-of-user-passwords-in-plain-text-for-years/">KrebsOnSecurity, 2019-03-21</a></li>
+<li>Craigslist 的搜尋架構：<a target="_blank" rel="noopener noreferrer" href="https://en.wikipedia.org/wiki/Sphinx_(search_engine)">Sphinx (search engine) - Wikipedia</a>、<a target="_blank" rel="noopener noreferrer" href="https://blog.zawodny.com/2011/10/27/experimenting-with-real-time-search-using-sphinx/">Jeremy Zawodny 的文章</a></li>
+<li>Webhook 簽章的實際做法：<a target="_blank" rel="noopener noreferrer" href="https://stripe.com/docs/webhooks/signatures">Stripe</a>、<a target="_blank" rel="noopener noreferrer" href="https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries">GitHub</a>（原文引用的兩份文件；時間戳與 5 分鐘容許範圍是依 Stripe 各語言官方函式庫的預設值）</li>
+<li>延伸閱讀：Martin Kleppmann，《Designing Data-Intensive Applications》，第 5 章（複寫）、第 6 章（分片）</li>
+</ul>
+</div>
+<div class="folded-corner"></div>
+</article>
+<aside class="toc"><h2>目錄</h2><ul><li class="lv2"><a href="#s-1">先講重點</a></li><li class="lv2"><a href="#s-2">什麼是伺服器</a></li><li class="lv2"><a href="#s-3">對外的三個入口</a></li><li class="lv3"><a href="#s-4">網頁：單頁應用（SPA）</a></li><li class="lv3"><a href="#s-5">手機 App</a></li><li class="lv3"><a href="#s-6">API</a></li><li class="lv3"><a href="#s-7">Client library</a></li><li class="lv2"><a href="#s-8">Webhook：平台主動通知你</a></li><li class="lv3"><a href="#s-9">安全：怎麼知道這個請求真的是平台發的</a></li><li class="lv3"><a href="#s-10">可靠：送失敗了怎麼辦</a></li><li class="lv2"><a href="#s-11">用密碼登入</a></li><li class="lv2"><a href="#s-12">主資料庫怎麼長大</a></li><li class="lv3"><a href="#s-13">分片</a></li><li class="lv3"><a href="#s-14">複寫</a></li><li class="lv3"><a href="#s-15">備份</a></li><li class="lv2"><a href="#s-16">其他的資料系統</a></li><li class="lv3"><a href="#s-17">全文搜尋</a></li><li class="lv3"><a href="#s-18">資料倉儲</a></li><li class="lv3"><a href="#s-19">三個資料系統的分工</a></li><li class="lv2"><a href="#s-20">背景工作</a></li><li class="lv3"><a href="#s-21">Pub/Sub：事件發生後的連鎖動作</a></li><li class="lv3"><a href="#s-22">排程工作</a></li><li class="lv2"><a href="#s-23">內部管理工具</a></li><li class="lv2"><a href="#s-24">原文沒有涵蓋的部分</a></li><li class="lv2"><a href="#s-25">參考來源</a></li></ul></aside>
+</div>
+</div>
+</body>
+</html>

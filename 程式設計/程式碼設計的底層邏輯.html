@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>程式碼設計的底層邏輯｜我的筆記 Wiki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Patrick+Hand&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/code.css">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="page-note">
+<div class="desk">
+<nav class="crumbs"><a href="../index.html">&larr; 筆記本首頁</a><span>/</span><a href="../index.html#cat-%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88">程式設計</a></nav>
+<div class="layout">
+<article class="notebook">
+<div class="spiral"></div><div class="tape left"></div><div class="tape right"></div>
+<header class="note-head"><a class="cat-tag" href="../index.html#cat-%E7%A8%8B%E5%BC%8F%E8%A8%AD%E8%A8%88">程式設計</a><br><h1 class="title">程式碼設計的底層邏輯</h1></header>
+<details class="toc-inline"><summary>目錄</summary><ul><li class="lv2"><a href="#s-1">先講結論：好程式碼只在追求一件事</a></li><li class="lv2"><a href="#s-2">五十年的演進：每一代都拿走一個自由</a></li><li class="lv2"><a href="#s-3">十一個要顧的面向</a></li><li class="lv3"><a href="#s-4">1. 狀態：會變的東西越少越好</a></li><li class="lv3"><a href="#s-5">2. 責任與擁有權：每件事只有一個主人</a></li><li class="lv3"><a href="#s-6">3. 抽象：只合併會一起變的東西</a></li><li class="lv3"><a href="#s-7">4. 邊界：中間要無聊，兩邊要多疑</a></li><li class="lv3"><a href="#s-8">5. 依賴方向：讓善變的依賴穩定的</a></li><li class="lv3"><a href="#s-9">6. 失敗：它是功能的一部分</a></li><li class="lv3"><a href="#s-10">7. 時間：兩個動作之間，世界會變</a></li><li class="lv3"><a href="#s-11">8. 明確與隱含：重要的事要看得見</a></li><li class="lv3"><a href="#s-12">9. 簡單：分清楚哪些複雜是你加的</a></li><li class="lv3"><a href="#s-13">10. 可驗證：把假設交給機器記</a></li><li class="lv3"><a href="#s-14">11. 演進：為「改得回來」而設計</a></li><li class="lv2"><a href="#s-15">GRASP 與 SOLID 放在哪裡</a></li><li class="lv2"><a href="#s-16">最後：原則之間會打架</a></li><li class="lv2"><a href="#s-17">參考</a></li></ul></details>
+<div class="content">
+<blockquote>
+<p>不談特定語言、不談技巧。這篇要回答的是：一份好維護的程式碼，到底在顧哪些事？這些事從 C 的年代到 Go、Rust，是怎麼一路被發現、被做過頭、又被修正回來的？</p>
+</blockquote>
+<h2 id="s-1">先講結論：好程式碼只在追求一件事</h2>
+<p><strong>局部推理（local reasoning）：我只看眼前這一小塊，就能確定它對不對、改了會影響誰。</strong></p>
+<p>理由很樸素。程式碼被讀的次數遠多於被寫的次數，而人腦一次只裝得下很少的東西。系統小的時候，整個系統都在你腦子裡，怎麼寫都行；系統一旦大過一個人的腦容量，唯一還能安全修改它的方法，就是讓每一塊都能<strong>單獨被理解</strong>。</p>
+<p>所以「好維護」不是乾淨、不是短、不是用了哪個模式，而是：</p>
+<ul>
+<li>要理解這一塊，不必先讀完其他地方。</li>
+<li>改一個決定，受影響的範圍和這個決定的大小相稱。</li>
+<li>不該發生的事，是結構上做不到，而不是靠大家記得不要做。</li>
+</ul>
+<p>後面講的每一個面向，都只是「局部推理會被什麼東西破壞」的不同答案：到處都能改的狀態、說不清誰負責的決定、綁錯的抽象、漏進來的外部資料、看不見的失敗、沒人管的時間差。</p>
+<h2 id="s-2">五十年的演進：每一代都拿走一個自由</h2>
+<p>程式語言的歷史常被講成「功能越來越多」。換個角度看更準確：<strong>每一次重要的進步，都是拿走程式設計師的一種自由</strong>，因為那種自由讓人無法局部推理。</p>
+<figure class="diagram"><svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="從結構化程式設計到 Rust，每一代拿走的自由與換來的保證">
+<line x1="30" y1="66" x2="730" y2="66" stroke="#2c2c2c" stroke-width="2"/>
+<g fill="#fffdf5" stroke="#2c2c2c" stroke-width="2"><circle cx="55" cy="66" r="6"/><circle cx="163" cy="66" r="6"/><circle cx="271" cy="66" r="6"/><circle cx="380" cy="66" r="6"/><circle cx="489" cy="66" r="6"/><circle cx="597" cy="66" r="6"/><circle cx="705" cy="66" r="6"/></g>
+<g text-anchor="middle" fill="#2c2c2c">
+<g font-size="13" font-weight="700"><text x="55" y="26">結構化</text><text x="163" y="26">模組化</text><text x="271" y="26">物件導向</text><text x="380" y="26">垃圾回收</text><text x="489" y="26">函數式</text><text x="597" y="26">Go</text><text x="705" y="26">Rust</text></g>
+<g font-size="11.5" fill="#6b6457"><text x="55" y="46">1968</text><text x="163" y="46">1972</text><text x="271" y="46">1980 年代起</text><text x="380" y="46">1990 年代普及</text><text x="489" y="46">2000 年代回流</text><text x="597" y="46">2009</text><text x="705" y="46">2015</text></g>
+<g font-size="12.5" font-weight="700" fill="#c0392b"><text x="55" y="98">goto</text><text x="163" y="98">全域可見的資料</text><text x="271" y="98">任意存取狀態</text><text x="380" y="98">手動釋放記憶體</text><text x="489" y="98">隨處可變</text><text x="597" y="98">繼承、例外</text><text x="705" y="98">null、資料競爭</text></g>
+<g font-size="11.5" fill="#6b6457"><text x="55" y="120">流程看得懂</text><text x="163" y="120">細節藏得住</text><text x="271" y="120">規則跟著資料</text><text x="380" y="120">沒有懸空指標</text><text x="489" y="120">值不會偷偷變</text><text x="597" y="120">失敗寫在明處</text><text x="705" y="120">編譯期就擋下</text></g>
+</g>
+</svg><figcaption>紅字是被拿走的自由，灰字是換來的保證</figcaption></figure>
+<p>C 的哲學是<strong>信任程式設計師</strong>：給你一切能力，不擋你做任何事。這讓它快而自由，也讓正確性完全壓在人的記憶上。之後每一代，都是對某一種「靠人記得」的反動：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>思潮</th>
+<th>它反對什麼</th>
+<th>留下來的</th>
+<th>做過頭的地方</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>結構化程式設計</td>
+<td><code>goto</code> 讓流程無法追蹤</td>
+<td>函式、迴圈、區塊：控制流程可以由上往下讀</td>
+<td>幾乎沒有，這是最乾淨的一次勝利</td>
+</tr>
+<tr>
+<td>模組化、資訊隱藏</td>
+<td>任何地方都能碰任何資料</td>
+<td>把「容易變的決定」藏在介面後面</td>
+<td>無</td>
+</tr>
+<tr>
+<td>物件導向</td>
+<td>資料和操作它的規則分家</td>
+<td>封裝、介面、多型</td>
+<td>繼承被當成重用工具，長出很深的類別樹；什麼都要是類別；為模式而模式</td>
+</tr>
+<tr>
+<td>垃圾回收</td>
+<td>手動管理記憶體必然出錯</td>
+<td>記憶體安全成為預設</td>
+<td>記憶體之外的資源（檔案、連線、鎖）反而沒人管了；生命週期變得隱形</td>
+</tr>
+<tr>
+<td>受檢例外（Java）</td>
+<td>失敗被默默忽略</td>
+<td>「失敗應該出現在函式簽名裡」這個想法</td>
+<td>形式太笨重，逼得人寫空的 <code>catch</code>，反而製造了它想消滅的東西</td>
+</tr>
+<tr>
+<td>動態語言</td>
+<td>型別宣告的繁文縟節</td>
+<td>快速試驗、簡潔的語法</td>
+<td>大型專案改不動，於是型別標註又被加回來</td>
+</tr>
+<tr>
+<td>函數式</td>
+<td>可變的共享狀態</td>
+<td>預設不可變、純函式、把資料當值</td>
+<td>追求全面純粹時，抽象層疊到常人讀不懂</td>
+</tr>
+<tr>
+<td>Go</td>
+<td>C++ 與 Java 的複雜度</td>
+<td>小語言、組合取代繼承、錯誤是普通的回傳值、統一的格式</td>
+<td>為了簡單長期不提供泛型，逼出大量重複與繞路，2022 年才補上</td>
+</tr>
+<tr>
+<td>Rust</td>
+<td>「安全」和「效能」只能二選一</td>
+<td>擁有權寫進型別、沒有 null、不安全的部分要明確標示</td>
+<td>學習成本高；簡單的事有時也得和編譯器周旋</td>
+</tr>
+</tbody>
+</table></div>
+<p>從這段歷史可以讀出三件事。</p>
+<p><strong>第一，進步多半是限制，不是能力。</strong> 拿掉 <code>goto</code>，你才能相信一個區塊只有一個入口；拿掉任意修改，你才能相信一個值不會在背後變掉。好的限制是一種保證。</p>
+<p><strong>第二，好想法常常先以過頭的形式出現，留下來的是想法，不是形式。</strong> 「失敗應該看得見」這個想法從沒死過，只是換了三次外形：</p>
+<pre class="code"><span class="code-lang">text</span><code>Java (1996)   void save(Order o) throws IOException          // 受檢例外：想法對，太笨重
+Go   (2009)   func Save(o Order) error                       // 錯誤是回傳值：簡單，但可以不檢查
+Rust (2015)   fn save(o: &amp;Order) -&gt; Result&lt;(), io::Error&gt;    // 結果型別：不處理就編譯不過
+</code></pre>
+<p>繼承也是：類別樹被放棄了，但「依賴介面而不是實作」被保留下來，Go 和 Rust 都只留介面與組合。動態語言也是：自由被保留，但型別以「可選」的形式回來。</p>
+<p><strong>第三，判斷一個限制值不值得，只看一件事：它換來的保證，抵不抵得過它的成本。</strong> 矯枉過正的共同點，都是成本超過了保證：為了重用而繼承、為了彈性而分層、為了純粹而抽象、為了簡單而拒絕必要的工具。</p>
+<p>語言會替你守住其中幾項，但沒有語言守得住全部。下面這些面向，不管用什麼語言都得自己顧。</p>
+<h2 id="s-3">十一個要顧的面向</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>面向</th>
+<th>它在問的問題</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>狀態</td>
+<td>有哪些東西會變？能不能少一點？</td>
+</tr>
+<tr>
+<td>責任與擁有權</td>
+<td>這個決定、這份資源，誰說了算？</td>
+</tr>
+<tr>
+<td>抽象</td>
+<td>哪些東西會為了同一個理由一起變？</td>
+</tr>
+<tr>
+<td>邊界</td>
+<td>哪裡開始是我不能信任、不能控制的？</td>
+</tr>
+<tr>
+<td>依賴方向</td>
+<td>誰知道誰？穩定的有沒有被善變的拖著走？</td>
+</tr>
+<tr>
+<td>失敗</td>
+<td>出錯時系統知道什麼？還站得住嗎？</td>
+</tr>
+<tr>
+<td>時間</td>
+<td>兩個動作之間，世界會不會已經變了？</td>
+</tr>
+<tr>
+<td>明確與隱含</td>
+<td>重要的事看得見嗎？</td>
+</tr>
+<tr>
+<td>簡單</td>
+<td>這些複雜度是問題本身的，還是我加的？</td>
+</tr>
+<tr>
+<td>可驗證</td>
+<td>我憑什麼相信它是對的？</td>
+</tr>
+<tr>
+<td>演進</td>
+<td>這個決定錯了，改得回來嗎？</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s-4">1. 狀態：會變的東西越少越好</h3>
+<p>程式難懂，幾乎都是因為狀態：一個值現在是什麼，取決於之前發生過的所有事。每多一個可變的欄位，要考慮的可能性就翻倍。</p>
+<ul>
+<li><strong>能不存就不存</strong>。算得出來的值不要另存一份，兩份遲早對不上。</li>
+<li><strong>預設不可變</strong>。會變的東西要有理由，而且範圍越小越好。</li>
+<li><strong>讓不合法的狀態寫不出來</strong>，而不是寫出來再驗證。</li>
+</ul>
+<figure class="diagram"><svg viewBox="0 0 760 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="三個布林值有八種組合，其中一半沒有意義；改成四個狀態與三條轉換">
+<defs><marker id="arB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2c2c2c"/></marker></defs>
+<g font-size="13" fill="#2c2c2c" text-anchor="middle">
+<text x="172" y="24" font-size="15" font-weight="700">三個布林值：8 種組合</text>
+<text x="172" y="44" font-size="12" fill="#6b6457" font-family="Menlo, monospace">isPaid / isCancelled / isRefunded</text>
+<g font-family="Menlo, monospace" font-size="14">
+<g fill="#eaf6ee" stroke="#1e8449" stroke-width="1.5"><rect x="25" y="56" width="68" height="42" rx="4"/><rect x="103" y="56" width="68" height="42" rx="4"/><rect x="181" y="56" width="68" height="42" rx="4"/><rect x="259" y="56" width="68" height="42" rx="4"/></g>
+<g fill="#fdf1ee" stroke="#c0392b" stroke-width="1.5"><rect x="25" y="108" width="68" height="42" rx="4"/><rect x="103" y="108" width="68" height="42" rx="4"/><rect x="181" y="108" width="68" height="42" rx="4"/><rect x="259" y="108" width="68" height="42" rx="4"/></g>
+<g fill="#1e8449"><text x="59" y="82">F F F</text><text x="137" y="82">T F F</text><text x="215" y="82">F T F</text><text x="293" y="82">T F T</text></g>
+<g fill="#c0392b"><text x="59" y="134">F F T</text><text x="137" y="134">F T T</text><text x="215" y="134">T T F</text><text x="293" y="134">T T T</text></g>
+</g>
+<text x="172" y="176">下排：型別允許，業務上沒有意義</text>
+<text x="172" y="198" font-size="12" fill="#6b6457">只能靠每個呼叫端都記得檢查</text>
+<line x1="348" y1="104" x2="388" y2="104" stroke="#2c2c2c" stroke-width="3" marker-end="url(#arB)"/>
+<text x="575" y="24" font-size="15" font-weight="700">一個生命週期：4 個狀態</text>
+<g fill="#fffdf5" stroke="#2471a3" stroke-width="2"><rect x="425" y="58" width="110" height="38" rx="19"/><rect x="615" y="58" width="110" height="38" rx="19"/><rect x="425" y="140" width="110" height="38" rx="19"/><rect x="615" y="140" width="110" height="38" rx="19"/></g>
+<g font-family="Menlo, monospace"><text x="480" y="82">pending</text><text x="670" y="82">paid</text><text x="480" y="164">cancelled</text><text x="670" y="164">refunded</text></g>
+<g stroke="#2c2c2c" stroke-width="1.8" marker-end="url(#arB)"><line x1="538" y1="77" x2="611" y2="77"/><line x1="480" y1="99" x2="480" y2="136"/><line x1="670" y1="99" x2="670" y2="136"/></g>
+<g font-family="Menlo, monospace" font-size="12" fill="#ca6f1e"><text x="575" y="68">pay()</text><text x="488" y="122" text-anchor="start">cancel()</text><text x="678" y="122" text-anchor="start">refund()</text></g>
+<text x="575" y="206">沒畫箭頭的轉換，程式碼寫不出來</text>
+</g>
+</svg><figcaption>驗證是事後攔截；建模是事前不給機會</figcaption></figure>
+<pre class="code"><span class="code-lang">typescript</span><code><span class="kr">type</span><span class="w"> </span><span class="nx">Order</span><span class="w"> </span><span class="o">=</span>
+<span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;pending&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;paid&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">paymentId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;cancelled&quot;</span><span class="w"> </span><span class="p">}</span>
+<span class="w">  </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">status</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;refunded&quot;</span><span class="p">;</span><span class="w"> </span><span class="nx">paymentId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="nx">refundId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">};</span>
+</code></pre>
+<p>這條線索貫穿整段歷史：null 被發明者自己稱為「十億美元的錯誤」，後來的語言都把「可能沒有值」變成型別的一部分；函數式語言把不可變當預設；Rust 規定同一時間「可以多人讀」或「只有一人寫」，不能兩者並存。</p>
+<p><strong>做過頭的樣子</strong>：為了不可變而到處複製大型資料；為了型別完美，把業務上本來就模糊的東西硬塞進僵硬的模型。</p>
+<h3 id="s-5">2. 責任與擁有權：每件事只有一個主人</h3>
+<p><strong>責任</strong>是對決定而言：這條規則由誰判斷？原則是把責任交給<strong>擁有做這件事所需資訊的那一方</strong>。訂單能不能退款，該由訂單決定，而不是散在每個呼叫它的地方各寫一個 <code>if</code>。</p>
+<p>一個很有用的區分：<strong>能讀的人可以很多，能決定的只能有一個</strong>。</p>
+<pre class="code"><span class="code-lang">typescript</span><code><span class="nx">account</span><span class="p">.</span><span class="nx">isSuspended</span><span class="p">();</span><span class="w">          </span><span class="c1">// 到處都能問</span>
+<span class="nx">accountPolicy</span><span class="p">.</span><span class="nx">suspend</span><span class="p">(</span><span class="nx">account</span><span class="p">);</span><span class="w"> </span><span class="c1">// 只有一個地方能做，驗證與稽核都在這裡</span>
+</code></pre>
+<p>放大到系統之間也一樣。三個系統各存一份客戶狀態不是問題，問題是三個都自認說了算。<strong>資料可以複製，決定權不能複製。</strong></p>
+<p><strong>擁有權</strong>是對資源而言：這塊記憶體、這個檔案、這條連線、這個背景工作，誰負責結束它？C 把這件事交給記憶；垃圾回收解決了記憶體，卻讓其他資源的主人變得模糊；Rust 把擁有權寫進型別，讓編譯器檢查。不管語言幫不幫你，問題都在：<strong>每一個被建立的東西，都要說得出誰負責收掉它</strong>，包括請求結束後還在跑的背景工作。</p>
+<p>另一個常用的切法是把**「決定」和「動手」分開**：判斷該做什麼的邏輯不碰外部世界，執行的部分只負責把決定變成效果。這樣規則可以單獨測試，出事時也分得清是判斷錯了，還是做到一半掛了。</p>
+<p><strong>做過頭的樣子</strong>：責任切得太碎，一條流程要跳過十個只有兩行的物件才拼得起來。單一責任量的是「改變的理由」，不是行數；一段三十行、完整呈現一條流程的函式，比九個互相呼叫的小函式更容易理解。</p>
+<h3 id="s-6">3. 抽象：只合併會一起變的東西</h3>
+<p>抽象的本質是一個賭注：<strong>我賭這幾樣東西未來會為了同樣的理由一起改變</strong>。賭對了，改一處就好；賭錯了，原本不相干的東西被綁在一起，改這個會壞那個。</p>
+<p>最常見的錯是把「長得像」當成「是同一件事」：</p>
+<pre class="code"><span class="code-lang">typescript</span><code><span class="c1">// 當初：兩種取消流程看起來一樣，合併</span>
+<span class="nx">cancelSubscription</span><span class="p">(</span><span class="nx">sub</span><span class="p">);</span>
+
+<span class="c1">// 半年後：一種要退款、一種要挽留、生效時間也不同</span>
+<span class="nx">cancelSubscription</span><span class="p">(</span><span class="nx">sub</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">refund</span><span class="o">:</span><span class="w"> </span><span class="kt">true</span><span class="p">,</span><span class="w"> </span><span class="nx">retainAccess</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="p">,</span><span class="w"> </span><span class="nx">immediate</span><span class="o">:</span><span class="w"> </span><span class="kt">false</span><span class="w"> </span><span class="p">});</span>
+</code></pre>
+<p><strong>函式長出一堆開關，就是當初賭錯了的訊號</strong>。它不再表達一個概念，而是在協調幾個碰巧長得像的概念。</p>
+<p>所以：</p>
+<ul>
+<li>「不要重複」指的是同一份<strong>知識</strong>不要有兩個版本，不是相似的字不能出現兩次。</li>
+<li><strong>重複是看得見的債，錯的抽象是看不見的耦合</strong>。前者一眼就看到，後者要等改壞了才知道。沒把握時，先讓它重複。</li>
+<li><strong>只保護有證據會變的地方</strong>。「外部服務的介面會自己改」是看得見的證據，值得包一層；「未來可能要支援五種資料庫」通常只是想像。</li>
+<li><strong>每一層都要說得出它保護什麼</strong>。把它拿掉，如果只是少了幾個轉呼叫的方法，它就是儀式。</li>
+</ul>
+<p><strong>做過頭的樣子</strong>：物件導向全盛期的過度設計。只有一種實作，卻先寫了工廠、策略、註冊表；每一層都只是把參數原封不動往下傳。整齊的複雜度還是複雜度。</p>
+<h3 id="s-7">4. 邊界：中間要無聊，兩邊要多疑</h3>
+<figure class="diagram"><svg viewBox="0 0 760 215" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="外部輸入經過入口邊界進入核心，再經出口邊界到外部系統">
+<defs><marker id="arA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2c2c2c"/></marker></defs>
+<g font-size="13" fill="#2c2c2c" text-anchor="middle">
+<rect x="10" y="16" width="124" height="118" rx="6" fill="#fdf1ee" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="72" y="42" font-size="15" font-weight="700" fill="#c0392b">外部輸入</text>
+<text x="72" y="70">API 回應</text><text x="72" y="92">佇列訊息</text><text x="72" y="114">使用者請求</text>
+<rect x="164" y="16" width="124" height="118" rx="6" fill="#fdf3e3" stroke="#ca6f1e" stroke-width="2"/>
+<text x="226" y="42" font-size="15" font-weight="700" fill="#ca6f1e">入口邊界</text>
+<text x="226" y="70">解析、驗證</text><text x="226" y="92">翻譯成自己的詞彙</text><text x="226" y="114">不合法就擋下</text>
+<rect x="318" y="16" width="124" height="118" rx="6" fill="#eaf6ee" stroke="#1e8449" stroke-width="2.5"/>
+<text x="380" y="42" font-size="15" font-weight="700" fill="#1e8449">核心邏輯</text>
+<text x="380" y="70">只存在合法狀態</text><text x="380" y="92">決策不碰外界</text><text x="380" y="114">一個決定一個主人</text>
+<rect x="472" y="16" width="124" height="118" rx="6" fill="#e9f1f8" stroke="#2471a3" stroke-width="2"/>
+<text x="534" y="42" font-size="15" font-weight="700" fill="#2471a3">出口邊界</text>
+<text x="534" y="70">結果可能未知</text><text x="534" y="92">重做要安全</text><text x="534" y="114">留下紀錄</text>
+<rect x="626" y="16" width="124" height="118" rx="6" fill="#fdf1ee" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="688" y="42" font-size="15" font-weight="700" fill="#c0392b">外部系統</text>
+<text x="688" y="70">金流、信件</text><text x="688" y="92">其他服務</text><text x="688" y="114">會慢會掛會重複</text>
+<g stroke="#2c2c2c" stroke-width="1.8" marker-end="url(#arA)"><line x1="137" y1="75" x2="160" y2="75"/><line x1="291" y1="75" x2="314" y2="75"/><line x1="445" y1="75" x2="468" y2="75"/><line x1="599" y1="75" x2="622" y2="75"/></g>
+<line x1="10" y1="154" x2="288" y2="154" stroke="#ca6f1e" stroke-width="3"/>
+<line x1="318" y1="154" x2="442" y2="154" stroke="#1e8449" stroke-width="3"/>
+<line x1="472" y1="154" x2="750" y2="154" stroke="#2471a3" stroke-width="3"/>
+<text x="149" y="178" font-weight="700">不信任：進來的都先檢查</text>
+<text x="380" y="178" font-weight="700">可以很無聊</text>
+<text x="611" y="178" font-weight="700">不假設：看到的 ≠ 發生的</text>
+<g font-size="12" fill="#6b6457"><text x="149" y="200">解析一次，裡面不再重複防禦</text><text x="380" y="200">規則由結構保證</text><text x="611" y="200">不知道就說不知道</text></g>
+</g>
+</svg><figcaption>把不確定性留在兩側的邊界，中間才能單純</figcaption></figure>
+<p>邊界是<strong>信任等級改變的地方</strong>。邊界之外的東西你控制不了：格式會變、欄位會缺、同一個意思有三種寫法。邊界之內，你應該可以放心。</p>
+<ul>
+<li><strong>在入口解析一次，轉成自己定義的型別</strong>，之後內部不必再到處檢查。到處都在去空白、判空值、猜狀態的程式碼，就是邊界沒守住，外面的不確定性漏進了裡面。</li>
+<li><strong>用自己的語言，不用別人的</strong>。外部服務的狀態名稱一旦散落在業務邏輯裡，你的系統就開始用它的世界觀思考，換一家就得重寫規則。</li>
+<li><strong>翻譯不是改名</strong>。兩個來源都叫「成功」，一個指已授權、一個指已入帳，把它們當成同一個值就是錯的。</li>
+<li><strong>不認得就說不認得</strong>。「不是失敗」不等於「成功」；查不到就當成零，是沒有人做過的決定。</li>
+</ul>
+<pre class="code"><span class="code-lang">typescript</span><code><span class="kr">type</span><span class="w"> </span><span class="nx">PaymentState</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;authorized&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;settled&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;failed&quot;</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s2">&quot;unknown&quot;</span><span class="p">;</span>
+
+<span class="kd">function</span><span class="w"> </span><span class="nx">fromProvider</span><span class="p">(</span><span class="nx">raw</span><span class="o">:</span><span class="w"> </span><span class="kt">unknown</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">PaymentState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">switch</span><span class="w"> </span><span class="p">(</span><span class="nx">raw</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;succeeded&quot;</span><span class="o">:</span><span class="w">       </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;settled&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;requires_action&quot;</span><span class="o">:</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;authorized&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="k">case</span><span class="w"> </span><span class="s2">&quot;canceled&quot;</span><span class="o">:</span><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="s2">&quot;failed&quot;</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">default</span><span class="o">:</span><span class="w">                </span><span class="kt">return</span><span class="w"> </span><span class="s2">&quot;unknown&quot;</span><span class="p">;</span><span class="w"> </span><span class="c1">// 不猜</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre>
+<p>Rust 的 <code>unsafe</code> 是同一個想法用在語言層級：危險的事可以做，但必須圈在一個標了記號的範圍裡，出事時知道去哪裡找。</p>
+<p><strong>做過頭的樣子</strong>：每兩個模組之間都築一道牆、每筆資料跨一層就轉換一次型別。邊界只該出現在信任等級或變動節奏真的不同的地方。</p>
+<h3 id="s-8">5. 依賴方向：讓善變的依賴穩定的</h3>
+<p>「誰知道誰」決定了改動會往哪裡擴散。A 依賴 B，B 一改 A 就可能要跟著改。所以原則是：<strong>依賴要指向比較穩定的那一方</strong>。</p>
+<ul>
+<li>核心的業務規則最穩定，應該誰都不依賴；畫面、資料庫、外部服務最善變，應該由它們來依賴核心定義的介面，而不是反過來。</li>
+<li><strong>隱藏的依賴最危險</strong>：全域變數、目前時間、環境設定、單例。函式簽名上看不出它需要這些，卻少了就不能跑、換了就行為不同。能用參數傳進來的就傳進來。</li>
+<li><strong>組合優於繼承</strong>。繼承是最強的一種依賴：子類別綁死在父類別的每一個實作細節上。這是物件導向留下的最大教訓，Go 和 Rust 乾脆不提供類別繼承。</li>
+</ul>
+<p><strong>做過頭的樣子</strong>：為了「反轉依賴」，每個類別都配一個只有一種實作的介面，再加上一套把所有東西自動接起來的框架，結果沒有人看得出執行時到底是誰在呼叫誰。</p>
+<h3 id="s-9">6. 失敗：它是功能的一部分</h3>
+<p>只描述順利情況的程式碼，只寫了一半。失敗不是功能外圍的清理工作，而是功能本身的行為。</p>
+<figure class="diagram"><svg viewBox="0 0 760 246" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="服務送出扣款請求，對方扣款成功，但回應在路上遺失，服務只看到逾時">
+<defs><marker id="arC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2c2c2c"/></marker></defs>
+<g font-size="13" fill="#2c2c2c" text-anchor="middle">
+<rect x="90" y="10" width="120" height="32" rx="5" fill="#eaf6ee" stroke="#1e8449" stroke-width="2"/><text x="150" y="31" font-weight="700">你的服務</text>
+<rect x="500" y="10" width="120" height="32" rx="5" fill="#fdf1ee" stroke="#c0392b" stroke-width="2"/><text x="560" y="31" font-weight="700">金流供應商</text>
+<g stroke="#6b6457" stroke-width="1.2" stroke-dasharray="5 5"><line x1="150" y1="42" x2="150" y2="178"/><line x1="560" y1="42" x2="560" y2="178"/></g>
+<line x1="152" y1="72" x2="556" y2="72" stroke="#2c2c2c" stroke-width="1.8" marker-end="url(#arC)"/>
+<text x="355" y="64">扣款請求</text>
+<text x="574" y="102" text-anchor="start" fill="#1e8449" font-weight="700">4.9 秒：扣款成功</text>
+<line x1="558" y1="128" x2="372" y2="128" stroke="#c0392b" stroke-width="1.8" stroke-dasharray="6 4"/>
+<text x="358" y="134" fill="#c0392b" font-size="20" font-weight="700">✕</text>
+<text x="465" y="120" fill="#c0392b">回應在路上遺失</text>
+<text x="136" y="160" text-anchor="end" fill="#c0392b" font-weight="700">5 秒：逾時</text>
+<rect x="30" y="194" width="330" height="40" rx="5" fill="#fffdf5" stroke="#ca6f1e" stroke-width="1.5"/>
+<text x="195" y="219">服務看到的：沒收到成功</text>
+<rect x="400" y="194" width="330" height="40" rx="5" fill="#fffdf5" stroke="#1e8449" stroke-width="1.5"/>
+<text x="565" y="219">實際發生的：錢已經扣了</text>
+</g>
+</svg><figcaption>逾時只告訴你「我不等了」，沒告訴你對面做了什麼</figcaption></figure>
+<ul>
+<li><strong>失敗要看得見</strong>。這是從受檢例外到錯誤回傳值、再到結果型別一路沒變的想法：一個函式會不會失敗，應該寫在它的簽名上，而不是藏在文件裡。</li>
+<li><strong>不要吞掉錯誤</strong>。空的錯誤處理、只記一行日誌就繼續，都是讓後面的程式以為這一步成功了。</li>
+<li><strong>不確定時停下來，不要猜</strong>。當機會被發現、被修好；猜錯的結果會安靜地錯上好幾個月。</li>
+<li><strong>結果有三種：成功、失敗、不知道</strong>。跨出自己的程序之後，「沒收到成功」不等於「失敗」。把「不知道」當成一個正式的狀態來處理，而不是硬歸到其中一邊。</li>
+<li><strong>預期內的失敗和程式錯誤是兩回事</strong>。使用者名稱被用掉、卡片被拒，是業務的正常結果，用回傳值表達；真正沒料到的才是例外。混在一起，警報就會被雜訊淹沒。</li>
+<li><strong>能處理的人才處理</strong>。每一層都攔下來再往上丟，只會讓同一個錯誤出現三次。這一層既不能復原、也不能補充資訊，就讓它過去。</li>
+<li><strong>防不住的要能修</strong>。再好的預防都會輸給現實，所以要有辦法發現系統已經不一致，並把它修回來。復原是功能，不是緊急程序。</li>
+</ul>
+<p><strong>做過頭的樣子</strong>：每一行都包一層防禦、每個值都再檢查一次。這通常代表邊界沒守好，或是狀態模型允許了不該存在的組合；該修的是上游，不是在下游加更多檢查。</p>
+<h3 id="s-10">7. 時間：兩個動作之間，世界會變</h3>
+<p>一行一行往下讀的程式碼，暗示著一個單純的世界：這行做完才做下一行，中間什麼都不會發生。只要有並行、網路或背景工作，這個假設就不成立。</p>
+<pre class="code"><span class="code-lang">typescript</span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">userExists</span><span class="p">(</span><span class="nx">email</span><span class="p">)))</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createUser</span><span class="p">(</span><span class="nx">email</span><span class="p">);</span>
+<span class="c1">// 兩個請求同時進來，各自都查到「不存在」，各自都建立了</span>
+</code></pre>
+<p>兩邊各自都做了正確的判斷，合起來卻破壞了規則。問題不在任何一行，而在<strong>兩行之間的空隙</strong>。</p>
+<p>時間帶來的四個問題，每一個都對應一個被打破的假設：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>假設</th>
+<th>現實</th>
+<th>該有的保護</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>這件事只會發生一次</td>
+<td>重試、重複送達、使用者連點兩下</td>
+<td>重做一次的結果和做一次相同</td>
+</tr>
+<tr>
+<td>這幾步要嘛全成功、要嘛全失敗</td>
+<td>做到一半中斷</td>
+<td>清楚知道「不可分割」的範圍到哪裡為止，超出的部分要能補救</td>
+</tr>
+<tr>
+<td>我讀到之後、寫入之前，沒人改過</td>
+<td>別人剛好改了</td>
+<td>寫入時確認資料還是我讀到的那個版本</td>
+</tr>
+<tr>
+<td>晚點再處理，總會處理完</td>
+<td>進來的比處理的快</td>
+<td>容量有限時要能拒絕，而不是無限排隊</td>
+</tr>
+</tbody>
+</table></div>
+<p>Go 的口號「不要用共享記憶體來溝通，要用溝通來共享記憶體」和 Rust 在編譯期禁止資料競爭，都是對同一個問題的回答：<strong>共享、可變、並行，三者不能同時存在</strong>，至少要放棄一個。</p>
+<p><strong>做過頭的樣子</strong>：在單機、單人使用的小工具上套用分散式系統的全套機制。保護要跟著真實存在的風險走。</p>
+<h3 id="s-11">8. 明確與隱含：重要的事要看得見</h3>
+<p>這是語言史上擺盪最多次的一條軸。太明確，重點被淹沒在樣板裡；太隱含，沒有人知道實際上發生了什麼。</p>
+<p>兩邊都有代價：</p>
+<ul>
+<li><strong>隱含的代價是驚訝</strong>。看不見的型別轉換、自動注入的依賴、靠命名規則觸發的行為、會偷偷改動參數的函式。寫的時候很省事，除錯時要先知道一堆「你應該要知道」的事。</li>
+<li><strong>明確的代價是雜訊</strong>。每一步都寫出來，真正重要的那個決定反而不顯眼。</li>
+</ul>
+<p>判準不是「越明確越好」，而是：<strong>重要的決定要看得見，無關緊要的細節才可以藏</strong>。</p>
+<ul>
+<li>會改變外部世界的動作（扣款、送出訊息、寫入資料庫）不該藏在一個名字很無害的函式裡。</li>
+<li>三個重要的業務分支，直接寫出來讓人一眼看到，勝過藏在一張要去別處找的對照表裡。</li>
+<li>來自程式碼之外的理由（外部服務的限制、被否決過的做法、一次事故的教訓）寫成註解。重述程式碼的註解是雜訊，但「為什麼」只有註解留得住。</li>
+<li>命名是最便宜的明確：名字取對了，就不需要另外解釋。</li>
+</ul>
+<p>Go 是這條軸上「偏明確」的代表：沒有例外、沒有隱式轉換、錯誤一定要寫出來處理，連排版都只有一種。它換來的是任何人打開任何一份程式碼都看得懂，付出的是比較囉嗦。</p>
+<p><strong>做過頭的樣子</strong>：兩端都有。一端是「魔法」框架，寫三行就能動，壞掉時沒人知道為什麼；另一端是儀式性的樣板，每個欄位都手寫一遍存取方法。</p>
+<h3 id="s-12">9. 簡單：分清楚哪些複雜是你加的</h3>
+<p>複雜度有兩種。<strong>本質的</strong>來自問題本身：付款就是會有「不知道成功了沒」的時候，你躲不掉。<strong>附加的</strong>來自解法：多出來的層、為了想像中的需求留的擴充點、不必要的工具。好的設計不是消滅複雜度，而是<strong>不替問題增加它本來沒有的複雜度</strong>，並且把躲不掉的部分關在少數幾個地方。</p>
+<p>要注意「簡單」和「容易」不是同一件事：</p>
+<ul>
+<li><strong>簡單</strong>是指東西之間沒有糾纏，可以分開來理解。</li>
+<li><strong>容易</strong>是指順手、熟悉、現在打起來快。</li>
+</ul>
+<p>容易的做法常常不簡單（一個什麼都包的全域物件用起來很順手），簡單的做法一開始常常不容易。</p>
+<p>另一個方向的錯也一樣常見：<strong>假裝問題比實際簡單</strong>。把三種結果壓成成功與失敗兩種，程式碼變短了，複雜度並沒有消失，只是搬到了半夜的事故裡。</p>
+<p><strong>做過頭的樣子</strong>：把「簡單」當成拒絕一切工具的理由，結果用大量重複和手工繞路，去補一個本來該有的抽象。</p>
+<h3 id="s-13">10. 可驗證：把假設交給機器記</h3>
+<p>每個系統都靠假設運作：這個欄位不會重複、這個函式只會在交易裡被呼叫、訊息可能會重複送達。問題不在於有假設，而在於<strong>假設只存在某個人的腦子裡</strong>。</p>
+<p>同一個假設，放的位置不同，保護力差很多：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>放在哪裡</th>
+<th>誰會碰到它</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>某個人的記憶</td>
+<td>只有他，而且他會離職</td>
+</tr>
+<tr>
+<td>註解、文件</td>
+<td>剛好讀到的人</td>
+</tr>
+<tr>
+<td>測試</td>
+<td>改壞它的人，在合併之前</td>
+</tr>
+<tr>
+<td>程式裡的檢查</td>
+<td>走到這條路徑的每一次執行</td>
+</tr>
+<tr>
+<td>型別</td>
+<td>所有編譯得過的程式碼</td>
+</tr>
+<tr>
+<td>資料庫約束</td>
+<td>所有寫入，包括並行的、和未來才寫的</td>
+</tr>
+</tbody>
+</table></div>
+<p>原則是：<strong>越重要的假設，放在越下面</strong>。前面那個「先查再寫」的例子，應用程式的檢查可以留著給使用者友善的訊息，但真正守住唯一性的必須是資料庫。</p>
+<p>這也是整段語言史的方向：把更多「靠人記得」的事，變成「機器會檢查」的事。型別系統、擁有權檢查、統一的格式工具，都是同一個想法。</p>
+<p>另外兩點：</p>
+<ul>
+<li><strong>難測試是設計的訊號</strong>。一段邏輯要先架好資料庫和五個假物件才能測，通常代表決定和動手纏在一起了。</li>
+<li><strong>執行時也要留下證據</strong>。出事時能不能從紀錄重建「當時發生了什麼」，取決於程式有沒有把重要的決定和狀態轉換記下來。</li>
+</ul>
+<p><strong>做過頭的樣子</strong>：追求覆蓋率數字，寫了一堆只是把實作再抄一遍的測試，一重構就全壞，卻抓不到真正的錯。</p>
+<h3 id="s-14">11. 演進：為「改得回來」而設計</h3>
+<p>程式碼被維護的時間遠長於被撰寫的時間，而需求一定會變。所以設計的對象不只是現在的功能，還有<strong>未來的修改</strong>。</p>
+<ul>
+<li><strong>決定有貴有便宜，注意力要照著分配</strong>。改一個私有函式的名字是下午的事；公開的介面、存下來的資料格式、被別人依賴的行為，一旦放出去就很難收回。前者快快做，後者慢慢想。</li>
+<li><strong>看影響範圍</strong>。一個小需求如果要動十五個地方，問題不在需求，而在某個概念已經漏得到處都是。</li>
+<li><strong>只要有夠多人在用，任何看得見的行為都會有人依賴</strong>，不管你有沒有承諾過。所以對外露出的東西越少越好。</li>
+<li><strong>好刪比好擴充重要</strong>。容易整塊拿掉的程式碼，代表它和別人的糾纏很少；這比預留十個擴充點更能應付未知的未來。</li>
+<li><strong>系統的邊界會長得像團隊的邊界</strong>。一個模組沒有明確的負責人，最後就沒有人敢改它。</li>
+</ul>
+<p><strong>做過頭的樣子</strong>：為了永遠不破壞相容性，把每一個歷史包袱都背在身上；或是反過來，為了未來所有可能的變化預先設計，讓今天的系統背著永遠不會來的需求。</p>
+<h2 id="s-15">GRASP 與 SOLID 放在哪裡</h2>
+<p>這兩套常見的物件導向原則，在上面的地圖裡各有位置。看了就知道它們主要涵蓋第 2、3、5 項，對狀態、失敗、時間幾乎沒有著墨，所以不能只靠它們：</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>原則</th>
+<th>一句話</th>
+<th>屬於哪個面向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>資訊專家（GRASP）</td>
+<td>有資訊的人負責</td>
+<td>責任</td>
+</tr>
+<tr>
+<td>創造者（GRASP）</td>
+<td>誰建立，誰保證它一出生就合法</td>
+<td>責任、狀態</td>
+</tr>
+<tr>
+<td>控制器（GRASP）</td>
+<td>流程協調要有固定的家</td>
+<td>責任</td>
+</tr>
+<tr>
+<td>高內聚、單一責任（SRP）</td>
+<td>一個模組只有一個改變的理由</td>
+<td>責任、抽象</td>
+</tr>
+<tr>
+<td>低耦合（GRASP）</td>
+<td>改這裡不必改那裡</td>
+<td>依賴方向</td>
+</tr>
+<tr>
+<td>多型（GRASP）</td>
+<td>依型別變化的行為交給型別</td>
+<td>抽象</td>
+</tr>
+<tr>
+<td>防護變異（GRASP）、開放封閉（OCP）</td>
+<td>把會變的點包在穩定的介面後面</td>
+<td>抽象、演進</td>
+</tr>
+<tr>
+<td>間接、純虛構（GRASP）</td>
+<td>用中介物件把兩邊隔開</td>
+<td>邊界</td>
+</tr>
+<tr>
+<td>里氏替換（LSP）</td>
+<td>能互相替換的才算同一種</td>
+<td>抽象、邊界</td>
+</tr>
+<tr>
+<td>介面隔離（ISP）</td>
+<td>不要逼使用者認識用不到的東西</td>
+<td>依賴方向</td>
+</tr>
+<tr>
+<td>依賴反轉（DIP）</td>
+<td>核心定義需求，外部去配合</td>
+<td>依賴方向</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s-16">最後：原則之間會打架</h2>
+<p>這些面向不是一張可以全部打勾的清單，它們會互相衝突：</p>
+<ul>
+<li>消除重複，會增加耦合。</li>
+<li>寫得明確，會增加雜訊。</li>
+<li>加上保護，會增加複雜度。</li>
+<li>保留彈性，會犧牲簡單。</li>
+</ul>
+<p>所以每一條原則都要回到三個問題：<strong>它在防什麼？這裡真的有那個問題嗎？照做的代價是什麼？</strong> 歷史上每一次矯枉過正，都是有人只記得規則的外形，忘了它原本要解決的問題。</p>
+<p>真正的判斷只有一個尺度：<strong>這個決定錯了有多貴、多難反悔</strong>。便宜又好改的，選最簡單的做法；昂貴又難回頭的，才值得多花力氣去保護。</p>
+<p>檢視一段設計時，可以依序問：</p>
+<ol>
+<li>這裡有哪些東西會變？能不能更少？</li>
+<li>這個決定的主人是誰？有沒有第二個地方也在做同樣的判斷？</li>
+<li>這兩段相似的東西，會為了同一個理由一起改嗎？</li>
+<li>外面的資料，是在哪裡變成我可以信任的？</li>
+<li>核心邏輯有沒有依賴到比它善變的東西？</li>
+<li>這一步之後如果中斷，系統知道什麼？</li>
+<li>這兩個動作之間，如果有別人插進來會怎樣？</li>
+<li>這裡最重要的決定，一眼看得出來嗎？</li>
+<li>哪些複雜度是問題本身的，哪些是我加的？</li>
+<li>我相信它是對的，憑的是機器的檢查，還是我的記憶？</li>
+<li>這個決定如果錯了，改回來要付出什麼？</li>
+</ol>
+<h2 id="s-17">參考</h2>
+<p><strong>延伸閱讀的出處</strong>（依我的知識整理，未逐項上網查證）：</p>
+<ul>
+<li>Edsger Dijkstra，〈Go To Statement Considered Harmful〉，1968：結構化程式設計的起點。</li>
+<li>David Parnas，〈On the Criteria To Be Used in Decomposing Systems into Modules〉，1972：資訊隱藏。</li>
+<li>Fred Brooks，〈No Silver Bullet〉，1986：本質複雜度與附加複雜度。</li>
+<li>Gamma 等，《Design Patterns》，1994：「組合優於繼承」。</li>
+<li>Tony Hoare，2009 年的演講：null 是「十億美元的錯誤」。</li>
+<li>Rich Hickey，〈Simple Made Easy〉，2011：簡單與容易的區別。</li>
+<li>Craig Larman，《Applying UML and Patterns》：GRASP；Robert C. Martin：SOLID。</li>
+<li>Sandi Metz：「重複比錯的抽象便宜」；Yaron Minsky：「讓不合法的狀態無法表示」；Alexis King：「解析，不要驗證」。</li>
+<li>Hyrum Wright：夠多人使用時，所有可觀察的行為都會被依賴（Hyrum's Law）。</li>
+</ul>
+<p><strong>整理時參考的文章</strong>（筆記庫 <code>raw/</code>）：</p>
+<ul>
+<li>7 Clean Code Truths That Look Wrong Until You Gain Experience</li>
+<li>7 Coding Patterns I Fished Out of the Senior Sea</li>
+<li>7 Patterns That Often Show Up in Senior-Level Code</li>
+<li>7 Programming Truths That Sound Wrong Until You've Seen Production</li>
+<li>7 Things I Learned From Senior Engineers' Code</li>
+<li>7 Things That Quietly Reveal Whether a Developer Is Actually Senior</li>
+<li>8 Programming Concepts That Look Useless Until Something Breaks</li>
+<li>How 7 Simple Error Handling Principles Made Me a Better Senior Developer</li>
+<li>5 Ways Senior Engineers Use AI Without Losing Their Edge</li>
+</ul>
+</div>
+<div class="folded-corner"></div>
+</article>
+<aside class="toc"><h2>目錄</h2><ul><li class="lv2"><a href="#s-1">先講結論：好程式碼只在追求一件事</a></li><li class="lv2"><a href="#s-2">五十年的演進：每一代都拿走一個自由</a></li><li class="lv2"><a href="#s-3">十一個要顧的面向</a></li><li class="lv3"><a href="#s-4">1. 狀態：會變的東西越少越好</a></li><li class="lv3"><a href="#s-5">2. 責任與擁有權：每件事只有一個主人</a></li><li class="lv3"><a href="#s-6">3. 抽象：只合併會一起變的東西</a></li><li class="lv3"><a href="#s-7">4. 邊界：中間要無聊，兩邊要多疑</a></li><li class="lv3"><a href="#s-8">5. 依賴方向：讓善變的依賴穩定的</a></li><li class="lv3"><a href="#s-9">6. 失敗：它是功能的一部分</a></li><li class="lv3"><a href="#s-10">7. 時間：兩個動作之間，世界會變</a></li><li class="lv3"><a href="#s-11">8. 明確與隱含：重要的事要看得見</a></li><li class="lv3"><a href="#s-12">9. 簡單：分清楚哪些複雜是你加的</a></li><li class="lv3"><a href="#s-13">10. 可驗證：把假設交給機器記</a></li><li class="lv3"><a href="#s-14">11. 演進：為「改得回來」而設計</a></li><li class="lv2"><a href="#s-15">GRASP 與 SOLID 放在哪裡</a></li><li class="lv2"><a href="#s-16">最後：原則之間會打架</a></li><li class="lv2"><a href="#s-17">參考</a></li></ul></aside>
+</div>
+</div>
+</body>
+</html>
