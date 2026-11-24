@@ -339,3 +339,33 @@ a { color: var(--ink-blue); }
   .toc, .toc-inline, .crumbs, .spiral, .tape { display: none; }
   .notebook { box-shadow: none; padding: 0; background: #fff; }
 }
+
+/* ===== 登入 ===== */
+.login { display: none; }
+.locked .desk { display: none; }
+.locked .login {
+  display: block;
+  max-width: 440px; margin: 8vh auto 0;
+  padding: 3rem 2rem 2.6rem; text-align: center;
+}
+.login .site-title {
+  font-family: var(--hand-title);
+  font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1.2;
+  display: inline;
+  background: linear-gradient(transparent 62%, var(--highlight-yellow) 62%, var(--highlight-yellow) 92%, transparent 92%);
+}
+.login .subtitle { font-family: var(--hand-title); font-size: 1.3rem; color: var(--ink-blue); margin-top: 0.8rem; }
+.login label { display: block; margin-top: 1.1rem; text-align: left; font-family: var(--hand-title); font-size: 1.15rem; }
+.login .search { display: block; width: 100%; margin-top: 0.3rem; }
+.login button {
+  margin-top: 1.6rem;
+  font-family: var(--hand-title); font-size: 1.25rem;
+  padding: 0.35em 2em;
+  color: var(--ink-black);
+  background: var(--highlight-yellow);
+  border: 2px solid var(--ink-black);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  cursor: pointer;
+}
+.login button:hover, .login button:focus-visible { background: var(--highlight-orange); outline: none; box-shadow: 0 0 0 4px var(--highlight-yellow); }
+.login-error { margin-top: 1rem; color: var(--ink-red); }
