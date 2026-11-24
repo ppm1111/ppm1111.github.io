@@ -14,5 +14,32 @@
     "file": "系統設計/系統設計入門：一個線上平台背後有哪些系統.html",
     "added": "2026-11-14",
     "updated": "2026-11-25"
+  },
+  {
+    "source": "",
+    "static": true,
+    "title": "Micrometer 到 DB：指標管線教學",
+    "category": "項目講解",
+    "file": "項目講解/metrics教學.html",
+    "added": "2026-11-25",
+    "updated": "2026-11-25"
+  },
+  {
+    "source": "",
+    "static": true,
+    "title": "user_system 實作教學",
+    "category": "項目講解",
+    "file": "項目講解/教學.html",
+    "added": "2026-11-25",
+    "updated": "2026-11-25"
+  },
+  {
+    "source": "",
+    "static": true,
+    "title": "告警管線教學",
+    "category": "項目講解",
+    "file": "項目講解/alert教學.html",
+    "added": "2026-11-25",
+    "updated": "2026-11-25"
   }
 ]
