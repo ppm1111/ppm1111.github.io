@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>告警管線教學</title>
+<style>
+:root {
+  --bg: #faf9f7;
+  --panel: #ffffff;
+  --text: #2b2a27;
+  --muted: #6e6a62;
+  --line: #e3e0da;
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  --code-bg: #f4f2ee;
+  --code-text: #33312d;
+  --kw: #9333ea;
+  --str: #15803d;
+  --com: #8a867c;
+  --ann: #b45309;
+  --box: #f0ede8;
+  --warn-bg: #fff7ed;
+  --warn-line: #fdba74;
+  --ok-bg: #f0fdf4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --panel: #1c1f24;
+    --text: #e4e2dd;
+    --muted: #9b978e;
+    --line: #30343b;
+    --accent: #7ba3f7;
+    --accent-soft: #1f2a42;
+    --code-bg: #14161a;
+    --code-text: #d6d3cc;
+    --kw: #c792ea;
+    --str: #7cc88a;
+    --com: #7b776d;
+    --ann: #e0a458;
+    --box: #23262c;
+    --warn-bg: #2b2117;
+    --warn-line: #8a5a2b;
+    --ok-bg: #16241a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1c1f24; --text: #e4e2dd; --muted: #9b978e; --line: #30343b;
+  --accent: #7ba3f7; --accent-soft: #1f2a42; --code-bg: #14161a; --code-text: #d6d3cc;
+  --kw: #c792ea; --str: #7cc88a; --com: #7b776d; --ann: #e0a458; --box: #23262c;
+  --warn-bg: #2b2117; --warn-line: #8a5a2b; --ok-bg: #16241a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.75;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 版面：左目錄右內容 */
+.layout { display: flex; max-width: 1200px; margin: 0 auto; }
+nav {
+  width: 240px; flex: none; position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; overflow-y: auto; padding: 24px 8px 24px 16px;
+  border-right: 1px solid var(--line); font-size: 14px;
+}
+nav .brand { font-weight: 700; font-size: 15px; margin: 0 8px 12px; }
+nav a {
+  display: block; color: var(--muted); padding: 5px 10px; border-radius: 6px;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: var(--text); text-decoration: none; background: var(--box); }
+nav a.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+nav a.sub { padding-left: 24px; font-size: 13px; }
+main { flex: 1; min-width: 0; padding: 32px 40px 120px; }
+@media (max-width: 900px) {
+  .layout { display: block; }
+  nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  main { padding: 24px 16px 80px; }
+}
+
+/* 文章元素 */
+h1 { font-size: 30px; line-height: 1.3; margin: 8px 0 4px; }
+h2 {
+  font-size: 23px; margin: 72px 0 12px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+h2 .no { color: var(--accent); margin-right: 10px; font-variant-numeric: tabular-nums; }
+h3 { font-size: 18px; margin: 40px 0 8px; }
+p { margin: 10px 0; }
+ul, ol { margin: 8px 0; padding-left: 26px; }
+li { margin: 4px 0; }
+.lead { color: var(--muted); margin-bottom: 32px; }
+strong { font-weight: 650; }
+table { border-collapse: collapse; margin: 14px 0; font-size: 14.5px; width: 100%; }
+th, td { border: 1px solid var(--line); padding: 7px 12px; text-align: left; vertical-align: top; }
+th { background: var(--box); font-weight: 650; }
+
+/* 行內 code 與代碼區塊 */
+code {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em; background: var(--code-bg); color: var(--code-text);
+  padding: 1px 6px; border-radius: 5px;
+}
+figure.code { margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+figure.code figcaption {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+  color: var(--muted); background: var(--box); padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
+}
+figure.code pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto; background: var(--code-bg);
+  font-size: 13.5px; line-height: 1.6;
+}
+figure.code pre code { background: none; padding: 0; font-size: inherit; }
+.tok-kw { color: var(--kw); }
+.tok-str { color: var(--str); }
+.tok-com { color: var(--com); font-style: italic; }
+.tok-ann { color: var(--ann); }
+
+/* 說明框 */
+.note, .why {
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  background: var(--panel); border-radius: 8px; padding: 10px 16px; margin: 16px 0;
+  font-size: 15px;
+}
+.why::before { content: "為什麼這樣設計"; display: block; font-weight: 700; color: var(--accent); font-size: 13.5px; margin-bottom: 4px; }
+.pitfall { border-left-color: var(--warn-line); background: var(--warn-bg); }
+.pitfall::before { content: "踩過的坑"; display: block; font-weight: 700; color: var(--ann); font-size: 13.5px; margin-bottom: 4px; }
+
+/* 流程圖（div 版）：直向堆疊的盒子 + 箭頭 */
+.flow { margin: 18px 0; display: flex; flex-direction: column; align-items: stretch; max-width: 640px; }
+.flow .step {
+  border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 8px 14px; font-size: 14.5px;
+}
+.flow .step b { font-weight: 650; }
+.flow .step small { color: var(--muted); display: block; font-size: 13px; }
+.flow .step.hi { border-color: var(--accent); background: var(--accent-soft); }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 15px; line-height: 1.4; padding: 1px 0; }
+.flow .arrow span { font-size: 12.5px; margin-left: 8px; }
+
+/* SVG 圖 */
+figure.diagram { margin: 20px 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+svg text { font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; fill: var(--text); }
+svg text.m { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+svg .b { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; rx: 8; }
+svg .bh { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .ln { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+svg .lnh { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .mut { fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav id="toc">
+  <div class="brand">告警管線：從超標到 alerts 表</div>
+  <a href="#ch1">1. 全景：一條告警的一生</a>
+  <a href="#ch2">2. alerts 表：落地的形狀</a>
+  <a href="#ch3">3. 規則設定與啟動驗證</a>
+  <a href="#ch4">4. 門檻規則的內存評估</a>
+  <a href="#ch5">5. RuleWindow：滑動窗口</a>
+  <a href="#ch6">6. 程式直接寫（security）</a>
+  <a href="#ch7">7. AlertRecorder 與 dedup SQL</a>
+  <a href="#ch8">8. 看門狗：store-stalled</a>
+  <a href="#ch9">9. 讀取、保留與已知限制</a>
+</nav>
+<main>
+<h1>告警是怎麼被記下來的</h1>
+<p class="lead">這份教學只講一條路：「某件事超標了」到「alerts 表多一筆」之間發生的所有事。兩個入口（metrics 的內存門檻評估、security 代碼直接寫）匯進同一個出口（common 的 <code>AlertRecorder</code>），中間藏著滑動窗口、dedup、獨立交易這些機制。所有代碼都從 repo 現抄，路徑以純文字標注。建議先讀 metrics教學.html 的第 5、7 章（step 機制與 publish()），本文從那個切點直接接下去。</p>
+
+<section id="ch1">
+<h2><span class="no">1</span>全景：一條告警的一生</h2>
+<p>整個告警系統的設計哲學是：<strong>alerts 表是唯一的終點，寫進去就是「發出告警」</strong>。沒有通知推送、沒有外部服務——查這張表就是看告警。而通往這張表的路只有一條門（<code>AlertRecorder</code>），但門前有兩種來客：</p>
+<div class="flow">
+  <div class="step"><b>入口一：門檻規則（metrics 模組）</b><small>「5 分鐘內 5xx 超過 0 次」這類<em>用設定描述</em>的規則。<code>ThresholdAlertEvaluator</code> 以 StepListener 身分掛在指標管線上，每 10 秒跟著 step 在內存評估（第 4、5 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>入口二：程式直接寫（security 模組）</b><small>「refresh token 被重用」這類<em>當場就能判定</em>的事件。業務代碼在事發的那一行直接呼叫 <code>alertRecorder.record(...)</code>（第 6 章）</small></div>
+  <div class="arrow">↓ <span>兩邊呼叫同一個方法</span></div>
+  <div class="step"><b>AlertRecorder（common 模組）</b><small>補上時間、client IP、MDC 的 trace_id / request_id，把 detail 轉成 JSON（第 7 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>AlertWriter：獨立交易</b><small><code>REQUIRES_NEW</code>——就算外層業務交易 rollback，告警也要留下</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>一句 SQL 完成 dedup + 寫入</b><small><code>INSERT ... SELECT ... WHERE NOT EXISTS</code>：抑制間隔內同 dedup_key 已有紀錄就不寫（第 7 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>alerts 表（append-only）</b><small>保留 730 天，由 clean 模組的 Retention 分批刪（第 9 章）</small></div>
+</div>
+<div class="note">另外有一條「監控監控本身」的旁路：<code>StoreStalledChecker</code> 看門狗。它不評估任何業務指標，只盯著「指標管線還活著嗎」——管線死了，入口一的所有規則會同時失明，所以需要一條不依賴管線的獨立檢查（第 8 章）。它的出口也是同一個 <code>AlertRecorder</code>。</div>
+</section>
+
+<section id="ch2">
+<h2><span class="no">2</span>alerts 表：落地的形狀</h2>
+<p>先看終點長什麼樣，後面每一章都在解釋「這些欄位的值是誰、在哪裡填上的」。</p>
+<figure class="code">
+<figcaption>database/src/main/resources/db/changelog/changes/013-create-alerts.sql</figcaption>
+<pre><code data-lang="sql">CREATE TABLE alerts (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    created_at  TIMESTAMPTZ  NOT NULL,
+    alert_type  VARCHAR(64)  NOT NULL,   -- 例：auth.token_reuse / auth.login_locked / metrics.server-errors
+    severity    VARCHAR(16)  NOT NULL,   -- WARNING / CRITICAL
+    message     VARCHAR(255) NOT NULL,   -- 人可讀英文句子
+    dedup_key   VARCHAR(128) NOT NULL,   -- 抑制重複用：alert_type + 維度，例 auth.token_reuse:user:42
+    user_id     BIGINT,                  -- 受影響使用者；系統面警報為 NULL（不設外鍵，使用者刪除後紀錄仍保留）
+    client_ip   VARCHAR(45),             -- 只有 API 請求觸發的有值
+    trace_id    VARCHAR(32),             -- MDC traceId，可與 app.log / activity_logs 互查
+    request_id  VARCHAR(64),             -- RequestIdFilter 放進 MDC 的請求 id
+    detail      JSONB                    -- 類型專屬脈絡，例 token reuse 的 family_token_id / user_agent
+);</code></pre>
+</figure>
+<p>幾個刻意的設計決定：</p>
+<table>
+<tr><th>決定</th><th>理由</th></tr>
+<tr><td><strong>append-only，沒有「已處理」欄位</strong></td><td>這是事件紀錄，不是工單系統。追蹤處理狀態是另一個領域的事，混進來會讓寫入端背上更新的職責</td></tr>
+<tr><td><strong><code>dedup_key</code> 是資料，不只是程式邏輯</strong></td><td>抑制重複的判斷靠 SQL 查這個欄位（搭配 <code>idx_alerts_dedup</code> 索引），所以多台機器部署時 dedup 天然跨機器生效</td></tr>
+<tr><td><strong><code>user_id</code> 不設外鍵</strong></td><td>使用者被刪除後，安全事件紀錄必須留著——告警的生命週期比使用者長</td></tr>
+<tr><td><strong><code>trace_id</code> / <code>request_id</code> 一起存</strong></td><td>看到一筆告警，能拿 trace_id 去 app.log 撈出同一條請求的完整日誌。告警只說「出事了」，脈絡在 log 裡</td></tr>
+<tr><td><strong><code>detail</code> 用 JSONB</strong></td><td>每種告警要帶的脈絡不同（token reuse 帶 UA 比對、門檻規則帶 series 分解），固定欄位塞不下；JSONB 還能用 <code>@&gt;</code> 查詢</td></tr>
+</table>
+</section>
+
+<section id="ch3">
+<h2><span class="no">3</span>規則設定與啟動驗證</h2>
+<p>門檻規則全部寫在設定檔，一條規則唸出來就是一句話：「<em>window 內，metric 的 sample 欄位做 agg 聚合，超過 above 就以 severity 告警</em>」。</p>
+<figure class="code">
+<figcaption>main/src/main/resources/application.yml（app.alerts，節錄）</figcaption>
+<pre><code data-lang="yaml">app:
+  alerts:
+    enabled: true
+    interval: 10s        # store-stalled 檢查的間隔（獨立執行緒）；門檻規則跟著 step 走，不吃這個值
+    store-stalled: 2m    # 指標寫入停擺多久就 CRITICAL 告警
+    rules:
+      # 有任何 5xx
+      - name: server-errors
+        metric: http.server.requests
+        sample: count
+        match: { outcome: SERVER_ERROR }
+        window: 5m
+        above: 0
+        severity: CRITICAL
+
+      # 超過門檻（app.logging.request）的請求太多
+      - name: slow-requests
+        metric: app.request.slow
+        window: 5m
+        above: 10
+
+      # DB 連線池有人在排隊
+      - name: db-pool-pending
+        metric: hikaricp.connections.pending
+        window: 5m
+        agg: max
+        above: 0</code></pre>
+</figure>
+<p>每個欄位對應 <code>AlertRulesProperties.Rule</code> 這個 record 的一個參數，而驗證就寫在 record 的 compact constructor 裡——<strong>設定錯了，app 直接起不來</strong>，而不是跑到半夜才發現某條規則沒生效：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/AlertRulesProperties.java 77-98（節錄）</figcaption>
+<pre><code data-lang="java">public Rule {
+    if (name == null || name.isBlank()) {
+        throw new IllegalStateException("app.alerts.rules[].name 未設定");
+    }
+    ...
+    sample = sample == null ? "value" : sample;
+    if (!SAMPLES.contains(sample)) {
+        throw new IllegalStateException("app.alerts.rules (" + name + ").sample 必須是 value / count / sum / max");
+    }
+    severity = severity == null ? AlertSeverity.WARNING : severity;
+    if (window == null || window.isNegative() || window.isZero()) {
+        throw new IllegalStateException("app.alerts.rules (" + name + ").window 必須大於 0");
+    }
+    ...
+    agg = agg == null ? "sum" : agg;
+    if (!AGGS.contains(agg)) {
+        throw new IllegalStateException("app.alerts.rules (" + name + ").agg 必須是 sum / max / avg");
+    }
+}</code></pre>
+</figure>
+<table>
+<tr><th>欄位</th><th>意義</th><th>預設</th></tr>
+<tr><td><code>name</code></td><td>規則名稱（全域唯一，外層建構子檢查重複）；寫入 alerts 時 <code>alert_type = metrics.&lt;name&gt;</code></td><td>必填</td></tr>
+<tr><td><code>metric</code> + <code>sample</code></td><td>盯哪個指標的哪個欄位。gauge/counter 用 <code>value</code>；timer 拆出來的三筆用 <code>count</code> / <code>sum</code> / <code>max</code>（metrics教學.html 第 7 章）</td><td><code>value</code></td></tr>
+<tr><td><code>match</code></td><td>attributes 部分比對：series 的 tag 須<em>包含</em>這些 key/value。不寫 = 該指標所有 series 一起算</td><td>全部</td></tr>
+<tr><td><code>window</code> + <code>agg</code></td><td>往回看多久、怎麼聚合。<code>sum</code>（沒資料視為 0）/ <code>max</code> / <code>avg</code></td><td><code>sum</code></td></tr>
+<tr><td><code>above</code> + <code>severity</code></td><td>超過就觸發，寫入的嚴重度</td><td>severity 預設 <code>WARNING</code></td></tr>
+</table>
+<div class="why">為什麼 <code>server-errors</code> 的門檻是 <code>above: 0</code>？因為 sample 是<strong>增量</strong>（step 體系），「5 分鐘窗口內 5xx 的 count 總和 &gt; 0」就是「這 5 分鐘內發生過任何一次 5xx」。而 <code>db-pool-pending</code> 用 <code>agg: max</code> 是因為 pending 是 gauge（瞬時值）——「窗口內曾經有人排隊」要看最大值，加總一堆瞬時值沒有意義。<strong>agg 的選擇跟著指標的型別語義走。</strong></div>
+</section>
+
+<section id="ch4">
+<h2><span class="no">4</span>門檻規則的內存評估</h2>
+<p>門檻規則的評估<strong>不查 DB、不跑排程</strong>——它搭指標管線的便車。metrics教學.html 第 7 章講過，<code>DatabaseMeterRegistry.publish()</code> 每 10 秒在 metrics-store 執行緒上把這個 step 的增量轉成一批 <code>MetricSample</code>。寫完 DB 之後，同一批資料會再發給所有 <code>StepListener</code>：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/store/DatabaseMeterRegistry.java 108-121（節錄）</figcaption>
+<pre><code data-lang="java">Instant recordedAt = Instant.ofEpochMilli(config().clock().wallTime());
+try {
+    store.save(samples, recordedAt);            // 先寫 DB
+} catch (RuntimeException e) {
+    log.atWarn().setCause(e)
+            .addKeyValue("samples", samples.size())
+            .log("metrics store write failed");
+}
+for (StepListener listener : listeners()) {     // 再發給訂閱者（告警評估）
+    try {
+        listener.onStep(samples, recordedAt);
+    } catch (RuntimeException e) {
+        log.atWarn().setCause(e).log("metrics step listener failed");
+    }
+}</code></pre>
+</figure>
+<div class="note">兩段各自 try/catch 是刻意的<strong>錯誤隔離</strong>：DB 寫失敗不影響告警評估，告警評估炸了也不影響下一輪寫入。還有一個重要性質：告警看到的數字<strong>和 metrics_sample / UI 完全同一批</strong>——同一個切點、同一個 recordedAt。告警說超標，去 UI 一定畫得出那個尖峰，不會有「告警和圖表對不上」的靈異現象。</div>
+<p>唯一的 <code>StepListener</code> 實作就是 <code>ThresholdAlertEvaluator</code>。它的 <code>onStep()</code> 對每條規則做兩件事：餵資料、做評估——第 2 章你問過的那兩個欄位（<code>windows</code> 是狀態、<code>alertRecorder</code> 是出口）就在這裡分工：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/ThresholdAlertEvaluator.java 33-60（節錄）</figcaption>
+<pre><code data-lang="java">@Override
+public void onStep(List&lt;MetricSample&gt; samples, Instant recordedAt) {
+    for (RuleWindow window : windows) {
+        try {
+            window.record(samples, recordedAt);   // ① 這個 step 的增量塞進窗口
+            evaluate(window, recordedAt);         // ② 窗口聚合、跟門檻比
+        } catch (RuntimeException e) {
+            log.atWarn().setCause(e).addKeyValue("rule", window.rule().name())
+                    .log("alert rule evaluation failed");
+        }
+    }
+}
+
+private void evaluate(RuleWindow window, Instant now) {
+    AlertRulesProperties.Rule rule = window.rule();
+    Double value = window.aggregate(now);
+    if (value == null &amp;&amp; "sum".equals(rule.agg())) {
+        value = 0.0;   // delta：沒有 sample = 沒有發生
+    }
+    if (value != null &amp;&amp; value &gt; rule.above()) {
+        alertRecorder.record("metrics." + rule.name(), rule.severity(),
+                "alert '%s' firing, %s of %s over %s is %s (threshold %s)"
+                        .formatted(rule.name(), rule.agg(), rule.metric(), AlertText.format(rule.window()),
+                                AlertText.trim(value), AlertText.trim(rule.above())),
+                "metrics." + rule.name(), null,
+                detail(rule, value, window.breakdown(now, SERIES_IN_DETAIL)), rule.window());  // ③ 超標才出門
+    }
+}</code></pre>
+</figure>
+<div class="why">為什麼在內存評估，而不是像舊方案那樣排程查 DB？三個理由：<strong>① 規則數量不影響 SQL 負載</strong>——一百條規則也只是內存迴圈，DB 一句 SQL 都不多；<strong>② 零延遲</strong>——step 一結束立刻評估，不用等下一輪排程；<strong>③ 數字保證一致</strong>（上面說的同一批資料）。代價寫在類別的 javadoc 裡：重啟後窗口是空的，重啟後的第一個 window 期間「只會少算、不會誤報」——對告警來說是正確的取捨方向。</div>
+<p>最後注意 <code>record()</code> 呼叫的最後一個參數 <code>rule.window()</code>——那是 dedup 的抑制間隔。<strong>持續超標時，告警不會每 10 秒寫一筆</strong>：同一條規則在一個 window 長度內只落一筆（第 7 章的 SQL 負責擋）。</p>
+</section>
+
+<section id="ch5">
+<h2><span class="no">5</span>RuleWindow：滑動窗口</h2>
+<p><code>RuleWindow</code> 是一條規則的「記憶」。規則要回答的是「<em>過去 5 分鐘</em>總共怎樣」，但每次 <code>onStep</code> 只拿得到<em>最近 10 秒</em>的增量——所以必須把格子留著。資料結構就是一個 <code>ArrayDeque&lt;Slot&gt;</code>：新 step 從尾端進，過期的從頭端出。</p>
+<figure class="diagram">
+<svg viewBox="0 0 680 210" role="img" aria-label="RuleWindow 滑動窗口">
+  <path class="ln" d="M30 150 H650"/><polygon points="658,150 649,145 649,155" fill="var(--muted)"/>
+  <path class="ln" d="M120 144 V156"/><path class="ln" d="M620 144 V156"/>
+  <text x="120" y="174" text-anchor="middle" font-size="11.5" class="m mut">now − window(5m)</text>
+  <text x="620" y="174" text-anchor="middle" font-size="11.5" class="m mut">now</text>
+  <rect class="b" x="60" y="100" width="48" height="34" style="stroke-dasharray:5 4;"/>
+  <text x="84" y="122" text-anchor="middle" font-size="12" class="mut">滑出</text>
+  <rect class="bh" x="130" y="100" width="48" height="34"/>
+  <rect class="bh" x="186" y="100" width="48" height="34"/>
+  <rect class="b" x="242" y="100" width="104" height="34" style="stroke-dasharray:5 4;"/>
+  <text x="294" y="122" text-anchor="middle" font-size="11.5" class="mut">沒資料不占格</text>
+  <rect class="bh" x="354" y="100" width="48" height="34"/>
+  <rect class="bh" x="410" y="100" width="48" height="34"/>
+  <rect class="bh" x="466" y="100" width="48" height="34"/>
+  <rect class="bh" x="522" y="100" width="48" height="34"/>
+  <rect class="lnh b" x="576" y="96" width="56" height="42"/>
+  <text x="604" y="122" text-anchor="middle" font-size="12">新 slot</text>
+  <text x="154" y="90" text-anchor="middle" font-size="11.5" class="mut">deque 頭端（舊）</text>
+  <text x="604" y="84" text-anchor="middle" font-size="11.5" class="mut">deque 尾端（新）</text>
+  <text x="340" y="36" text-anchor="middle" font-size="13">每個 slot = 一個 step 的聚合（count / sum / max）＋ 原始 entries</text>
+  <path class="lnh" d="M340 44 V70" marker-end="none"/>
+</svg>
+<figcaption>評估時先 evictBefore(now − window) 把頭端過期的 slot 丟掉，剩下的就是窗口內容。</figcaption>
+</figure>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/RuleWindow.java 44-80（節錄）</figcaption>
+<pre><code data-lang="java">/** 收下一個 step 的增量；沒有符合的 sample 就不占格子（等同 DB 沒有 row） */
+void record(List&lt;MetricSample&gt; samples, Instant recordedAt) {
+    double sum = 0;
+    double max = Double.NEGATIVE_INFINITY;
+    List&lt;Entry&gt; entries = new ArrayList&lt;&gt;();
+    for (MetricSample sample : samples) {
+        if (matches(sample)) {                      // metric 名稱 + sample 欄位 + match tag 比對
+            sum += sample.value();
+            max = Math.max(max, sample.value());
+            entries.add(new Entry(sample.attributes(), sample.value()));
+        }
+    }
+    if (!entries.isEmpty()) {
+        slots.addLast(new Slot(recordedAt, entries.size(), sum, max, List.copyOf(entries)));
+    }
+}
+
+/** 窗口內的聚合值；完全沒資料回傳 null（與 SQL aggregate 相同） */
+@Nullable
+Double aggregate(Instant now) {
+    evictBefore(now.minus(rule.window()));          // 頭端過期的滑出
+    if (slots.isEmpty()) {
+        return null;
+    }
+    int count = 0;
+    double sum = 0;
+    double max = Double.NEGATIVE_INFINITY;
+    for (Slot slot : slots) {
+        count += slot.count();
+        sum += slot.sum();
+        max = Math.max(max, slot.max());
+    }
+    return switch (rule.agg()) {
+        case "max" -&gt; max;
+        case "avg" -&gt; sum / count;
+        default -&gt; sum;
+    };
+}</code></pre>
+</figure>
+<div class="why"><strong>null 和 0 的區別是這個類最細膩的地方。</strong>窗口內完全沒資料時，<code>aggregate()</code> 回 <code>null</code> 而不是 0——因為對 <code>avg</code> 和 <code>max</code> 來說，「沒有資料」和「值是 0」是兩回事（平均 0 和沒量到是不同的事實）。只有 <code>sum</code> 的呼叫端（第 4 章的 <code>evaluate()</code>）會把 null 視為 0，因為增量的世界裡「沒有 sample = 沒有發生 = 0 次」。這套語義是刻意對齊舊 SQL 版 <code>aggregate</code> 的行為，搬進內存時不改變任何規則的觸發條件。</div>
+<div class="pitfall">注意 javadoc 那句「<strong>非執行緒安全</strong>」。<code>ArrayDeque</code> 沒有任何鎖，敢這樣寫是因為整條鏈（publish → onStep → record/aggregate）都跑在<strong>同一條 metrics-store 執行緒</strong>上，天生串行。如果哪天有人在別的執行緒碰 RuleWindow，這個前提就破了——所以註解把前提寫死：「只在 registry 的 step 執行緒上使用」。</div>
+<p>還有一個只在觸發時才做的動作：<code>breakdown()</code> 把窗口內各 series 的貢獻由大到小列出前 5 條，塞進告警的 <code>detail</code>。所以收到 slow-sql 告警時，detail 裡直接寫著是哪幾句 statement 貢獻了幾次慢查詢——不用再回 UI 翻。它遍歷每個 slot 留著的 <code>entries</code>，成本比 aggregate 高，但「只在觸發時呼叫，成本不在熱路徑上」（RuleWindow.java 82-84 行的註解）。</p>
+</section>
+
+<section id="ch6">
+<h2><span class="no">6</span>程式直接寫（security）</h2>
+<p>有些事件不需要窗口、不需要門檻——<strong>發生一次就是事實</strong>。這種告警由業務代碼在事發現場直接寫，security 模組有兩處：</p>
+<p><strong>① 帳號被鎖定</strong>（WARNING）。連續密碼錯誤達到上限、觸發鎖定的那一刻：</p>
+<figure class="code">
+<figcaption>security/src/main/java/com/example/security/auth/service/impl/AuthServiceImpl.java 115-125（節錄）</figcaption>
+<pre><code data-lang="java">if (!passwordEncoder.matches(password, user.passwordHash())) {
+    count(LOGIN_FAILURE_METRIC, "bad_password");
+    if (attempts == 0) {
+        log.warn("account locked, user_id={}", user.id());
+        // 鎖定期間重複觸發不再記（dedup_key + lockDuration 抑制）
+        alertRecorder.record("auth.login_locked", AlertSeverity.WARNING,
+                "account locked after too many failed logins, user " + user.id(),
+                "auth.login_locked:user:" + user.id(), user.id(),
+                Map.of("max_attempts", loginLockProperties.maxAttempts(),
+                        "lock_duration", loginLockProperties.lockDuration().toString()),
+                loginLockProperties.lockDuration());   // 抑制間隔 = 鎖定時長
+    }
+    throw new UnauthorizedException(INVALID_CREDENTIALS);
+}</code></pre>
+</figure>
+<p><strong>② refresh token 重用</strong>（CRITICAL）。已被換發過的 token 又被拿來用，代表 token 可能外洩：</p>
+<figure class="code">
+<figcaption>security/src/main/java/com/example/security/auth/service/impl/AuthServiceImpl.java 153-173（節錄）</figcaption>
+<pre><code data-lang="java">if (current.isRotated()) {
+    // 已被換發過的 token 又被拿來用 → 可能外洩，整個 family 作廢
+    refreshTokenRepo.revokeFamily(current.familyTokenId(), RevokedReason.REUSE_DETECTED, now);
+    ...
+    alertRecorder.record("auth.token_reuse", AlertSeverity.CRITICAL,
+            "refresh token reuse detected for user " + current.userId(),
+            "auth.token_reuse:user:" + current.userId(), current.userId(),
+            Map.of("family_token_id", current.familyTokenId(),
+                    "token_id", current.tokenId(),
+                    "user_agent", String.valueOf(userAgent),
+                    "issued_user_agent", String.valueOf(current.userAgent())),
+            Duration.ZERO);   // 每次都記：每一次重用都是獨立的安全事件
+}</code></pre>
+</figure>
+<p>兩個呼叫並排看，<strong>抑制間隔（最後一個參數）的選擇就是語義的選擇</strong>：</p>
+<table>
+<tr><th></th><th>auth.login_locked</th><th>auth.token_reuse</th></tr>
+<tr><td>dedup_key</td><td><code>auth.login_locked:user:42</code></td><td><code>auth.token_reuse:user:42</code></td></tr>
+<tr><td>抑制間隔</td><td><code>lockDuration</code>（鎖定期間內只記一筆）</td><td><code>Duration.ZERO</code>（每次都記）</td></tr>
+<tr><td>理由</td><td>鎖定中攻擊者繼續猜密碼不會產生新資訊——「他還在猜」已經被第一筆涵蓋</td><td>每一次重用嘗試都是獨立證據（可能來自不同 IP / UA），審計時要完整</td></tr>
+<tr><td>detail 放什麼</td><td>鎖定參數（上限次數、時長）</td><td>兩個 UA 並列：這次請求的 UA vs 當初簽發時的 UA，一眼看出「是不是同一台裝置」</td></tr>
+</table>
+<div class="note">和入口一對照：<strong>門檻規則適合「量變引起質變」的訊號</strong>（5xx 多起來了、登入失敗多起來了），需要窗口累積才有意義；<strong>直接寫適合「一次就算數」的事件</strong>（鎖定、重用），當場就有完整脈絡（user_id、UA、family_token_id），不需要也不應該等聚合。注意 yml 裡還有一條 <code>login-bruteforce</code> 門檻規則盯著 <code>auth.login.failure</code> 指標——同一個登入失敗，<em>單一帳號被鎖</em>走直接寫、<em>全站失敗量異常</em>走門檻規則，兩個入口各管各的維度。</div>
+</section>
+
+<section id="ch7">
+<h2><span class="no">7</span>AlertRecorder 與 dedup SQL</h2>
+<p>兩個入口最後都走進同一個方法。<code>AlertRecorder</code> 做的事是「把呼叫端不想管的脈絡補齊」：</p>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/alert/AlertRecorder.java 44-61（節錄）</figcaption>
+<pre><code data-lang="java">public void record(String alertType, AlertSeverity severity, String message, String dedupKey,
+                   @Nullable Long userId, @Nullable Map&lt;String, ?&gt; detail, Duration suppressFor) {
+    try {
+        Instant now = timeProvider.now();
+        AlertEntry entry = new AlertEntry(now, alertType, severity, message, dedupKey, userId,
+                clientIp(), MDC.get(TRACE_ID_MDC_KEY), MDC.get(RequestIdFilter.MDC_KEY),
+                detail == null ? null : jsonMapper.writeValueAsString(detail));
+        writer.write(entry, now.minus(suppressFor));
+    } catch (RuntimeException e) {
+        log.atWarn().setCause(e).addKeyValue("alert_type", alertType).log("alert write failed");
+    }
+}
+
+private static @Nullable String clientIp() {
+    return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes
+            ? attributes.getRequest().getRemoteAddr()
+            : null;
+}</code></pre>
+</figure>
+<p>三個「自動補」的欄位解釋了第 2 章表裡那些 nullable 欄位的來源：</p>
+<ul>
+<li><strong>client_ip</strong>：從當前 HTTP 請求拿。排程執行緒（門檻規則、看門狗）沒有請求上下文，拿到 null——所以「client_ip 有值」本身就代表「這筆告警是某個 API 請求觸發的」。</li>
+<li><strong>trace_id / request_id</strong>：直接撈 MDC。security 的告警發生在請求處理中，MDC 有值；metrics 的告警發生在 metrics-store 執行緒上，MDC 是空的——欄位的有無忠實反映了告警的出身。</li>
+<li><strong>整個方法包在 try/catch 裡</strong>：告警寫失敗只記 warn。寧可丟一筆告警，不能讓「記告警」弄死正在處理的登入請求——告警永遠是旁路，不是主流程。</li>
+</ul>
+<p>接著 <code>AlertWriter</code> 只有一件事，但那件事很關鍵：</p>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/alert/AlertWriter.java</figcaption>
+<pre><code data-lang="java">/** 獨立 transaction 寫入：業務 rollback 時警報仍會留下 */
+public class AlertWriter {
+    ...
+    /** @return false = 同 dedup_key 在抑制間隔內已有紀錄，未寫入 */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean write(AlertEntry entry, Instant suppressAfter) {
+        return mapper.insertIfNotSuppressed(entry, suppressAfter) &gt; 0;
+    }
+}</code></pre>
+</figure>
+<div class="why"><code>REQUIRES_NEW</code> 的意義用 token reuse 的場景看最清楚：refresh 流程偵測到重用後會丟 <code>UnauthorizedException</code>，而撤銷 family 的寫入靠 <code>noRollbackFor</code> 保住——但告警不想賭在外層交易的 rollback 規則上。開一個<strong>全新的、立刻提交的交易</strong>，告警就和外層的命運徹底解耦：外層就算整個 rollback，alerts 表那筆也已經提交了。</div>
+<p>最後是 dedup 的實作——<strong>一句 SQL 同時完成「查」和「寫」</strong>：</p>
+<figure class="code">
+<figcaption>common/src/main/resources/com/example/common/alert/mapper/AlertMapper.xml</figcaption>
+<pre><code data-lang="sql">-- 單一 statement 完成「間隔內沒有同 dedup_key 才寫入」，避免先查再寫的併發重複
+INSERT INTO alerts (created_at, alert_type, severity, message, dedup_key,
+                    user_id, client_ip, trace_id, request_id, detail)
+SELECT #{entry.createdAt}, #{entry.alertType}, #{entry.severity}, #{entry.message}, #{entry.dedupKey},
+       #{entry.userId}, #{entry.clientIp}, #{entry.traceId}, #{entry.requestId}, CAST(#{entry.detail} AS JSONB)
+WHERE NOT EXISTS (
+    SELECT 1 FROM alerts
+    WHERE dedup_key = #{entry.dedupKey} AND created_at &gt; #{suppressAfter}
+)</code></pre>
+</figure>
+<div class="pitfall">為什麼不寫成兩步（先 SELECT 檢查、沒有再 INSERT）？因為兩步之間有<strong>競態窗口</strong>：兩條執行緒（或兩台機器）同時檢查、同時發現「沒有」、同時寫入 → 重複告警。<code>INSERT ... SELECT ... WHERE NOT EXISTS</code> 是單一 statement，檢查和寫入在同一個原子動作裡。這也是 <code>MetricsAlertScheduler</code> javadoc 說「多台部署每台都會跑，由 alerts 的 dedup_key 抑制重複寫入」的底氣——dedup 做在 DB，天然跨機器。查詢條件 <code>(dedup_key, created_at)</code> 正好踩在 <code>idx_alerts_dedup</code> 索引上，每次寫入的 dedup 檢查是 index scan，不掃表。</div>
+</section>
+
+<section id="ch8">
+<h2><span class="no">8</span>看門狗：store-stalled</h2>
+<p>第 4 章的評估有一個盲點：它<strong>搭指標管線的便車，所以管線死了它跟著死</strong>——而且死得悄無聲息（沒有 step，就沒有評估，就沒有告警）。管線停擺意味著所有門檻規則同時失明，所以需要一條「監控監控本身」的旁路，而且它必須滿足一個條件：<strong>不能跑在它要監控的那條執行緒上</strong>。</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/StoreStalledChecker.java 32-42（節錄）</figcaption>
+<pre><code data-lang="java">public void check(Instant now) {
+    Instant lastSavedAt = writeState.lastSavedAt();
+    if (Duration.between(lastSavedAt, now).compareTo(stalledAfter) &lt; 0) {
+        return;                                    // 最近有寫入，一切正常
+    }
+    alertRecorder.record(ALERT_TYPE, AlertSeverity.CRITICAL,
+            "alert 'store-stalled' firing, no metrics store writes for " + AlertText.format(stalledAfter),
+            ALERT_TYPE, null,
+            Map.of("stalled", AlertText.format(stalledAfter), "last_saved_at", lastSavedAt.toString()),
+            stalledAfter);                         // 持續停擺也只每 stalledAfter 記一筆
+}</code></pre>
+</figure>
+<p>它判斷的依據 <code>MetricsWriteState</code> 是一個最小化的共享狀態——一個 <code>volatile Instant</code>：每次 <code>DatabaseMetricsStore</code> 成功寫完 DB 就蓋一次時間戳（metrics教學.html 第 6 章那個 tracked-store lambda）。看門狗只讀內存，不查 DB——「管線活著嗎」這個問題不應該靠 DB 查詢回答，不然 DB 慢的時候看門狗自己也卡住。</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/MetricsAlertScheduler.java 59-64（節錄）</figcaption>
+<pre><code data-lang="java">@Scheduled(fixedDelayString = "${app.alerts.interval:10s}")
+public void checkStoreStalled() {
+    if (stalledChecker != null) {
+        stalledChecker.check(timeProvider.now());
+    }
+}</code></pre>
+</figure>
+<div class="why">注意這是整個告警系統裡<strong>唯一的 @Scheduled</strong>——門檻規則不用排程（跟著 step 走），只有看門狗用。而且它跑在 Spring 的排程執行緒池上，和 metrics-store 執行緒完全獨立：<strong>step 執行緒死了，排程執行緒才抓得到</strong>。如果把這個檢查也掛成 StepListener，它就和被監控者同生共死，永遠發不出「我死了」的告警。這就是 yml 裡 <code>interval: 10s</code> 的用途——它只控制看門狗的檢查頻率，跟門檻規則無關（第 3 章設定註解寫的「門檻規則跟著 step 走，不吃這個值」）。</div>
+<div class="note">兩個防誤報的細節：① <code>MetricsWriteState</code> 的初始值是<strong>啟動時間</strong>——app 剛起來還沒寫過第一筆，自帶一個 <code>stalledAfter</code>（2 分鐘）的緩衝，不會一開機就告警；② 告警的抑制間隔也是 <code>stalledAfter</code>——持續停擺時每 2 分鐘留一筆，既能看出「還沒好」，又不會灌爆 alerts 表。當然它有自己的極限：<strong>app 整個掛了，誰也寫不了告警</strong>——那是外部監控的事，javadoc 裡明說了。</div>
+</section>
+
+<section id="ch9">
+<h2><span class="no">9</span>讀取、保留與已知限制</h2>
+<p>最後把這條管線的「出口端」和邊界交代清楚。</p>
+<p><strong>誰在讀 alerts？目前：人，用 SQL。</strong>沒有告警列表頁、沒有通知推送——這是刻意的範圍決定（單機、不依賴外部服務的原則）。常用的幾個查法：</p>
+<figure class="code">
+<figcaption>查詢範例（psql）</figcaption>
+<pre><code data-lang="sql">-- 最近的 CRITICAL
+SELECT created_at, alert_type, message FROM alerts
+WHERE severity = 'CRITICAL' ORDER BY created_at DESC LIMIT 20;
+
+-- 某個使用者的安全事件（走 idx_alerts_user）
+SELECT * FROM alerts WHERE user_id = 42 ORDER BY created_at DESC;
+
+-- 拿 trace_id 去 log 裡撈同一條請求的完整脈絡
+SELECT trace_id, detail FROM alerts WHERE alert_type = 'auth.token_reuse';
+
+-- detail 是 JSONB，可以部分比對
+SELECT * FROM alerts WHERE detail @&gt; '{"metric": "app.sql.slow"}';</code></pre>
+</figure>
+<p><strong>保留：730 天，分批刪。</strong>clean 模組的 Retention 排程負責（和 app.log、activity_logs 同一套機制）：</p>
+<figure class="code">
+<figcaption>clean/src/main/resources/com/example/clean/retention/mapper/RetentionMapper.xml（節錄）＋ main/src/main/resources/application.yml 54 行</figcaption>
+<pre><code data-lang="sql">-- app.retention.alerts: ${ALERT_RETENTION:730d}
+DELETE FROM alerts
+WHERE id IN (
+    SELECT id FROM alerts
+    WHERE created_at &lt; #{before}
+    LIMIT #{limit}        -- 分批，不產生長交易
+)</code></pre>
+</figure>
+<div class="why">730 天遠長於指標資料（raw 14 天、hourly 365 天），因為告警的價值密度不同：metrics_sample 一天幾十萬筆、多數永遠沒人看；alerts 一筆就是一次事件，安全稽核（「這個帳號歷史上被鎖過幾次」）需要看得夠遠。</div>
+<p><strong>整條管線的已知限制</strong>，也是讀完這份教學後你能準確說出「為什麻」的地方：</p>
+<table>
+<tr><th>限制</th><th>原因／邊界</th></tr>
+<tr><td>沒有通知推送（email / Slack）</td><td>範圍決定：不依賴外部服務。要看告警得主動查表。接通知時，入口不用動——在 AlertRecorder 之後加一個出口即可</td></tr>
+<tr><td>重啟後窗口清空</td><td>內存評估的代價。重啟後第一個 window 期間只會少算不會誤報；跨重啟的持續異常會由下一個 window 重新抓到</td></tr>
+<tr><td>app 整個掛掉時無告警</td><td>看門狗跑在 app 裡，app 死了誰也寫不了 DB。這層要靠外部監控（compose healthcheck / 人）</td></tr>
+<tr><td>規則不能動態改</td><td>規則是 @ConfigurationProperties，改了要重啟。換來的是啟動即驗證（第 3 章）：不存在「改壞了但沒人發現」的狀態</td></tr>
+<tr><td>alert_type 沒有 registry</td><td>字串約定（<code>auth.*</code> / <code>metrics.*</code>），新增類型不用改任何中心清單——代價是 typo 不會被抓到</td></tr>
+</table>
+<div class="note"><strong>全文回顧，一筆告警的欄位是這樣湊齊的：</strong><code>alert_type</code> / <code>severity</code> / <code>message</code> / <code>dedup_key</code> / <code>detail</code> 由入口決定（門檻規則拼規則名和 breakdown，security 拼事件脈絡）；<code>created_at</code> / <code>client_ip</code> / <code>trace_id</code> / <code>request_id</code> 由 AlertRecorder 自動補；「這筆到底寫不寫」由那句 <code>WHERE NOT EXISTS</code> 決定；「這筆活多久」由 Retention 決定。每一層只管自己的事——這就是兩個入口能共用一個出口的原因。</div>
+</section>
+
+<footer style="margin-top:48px;color:var(--muted);font-size:13px;">本檔案完全自包含（無外部資源、無代碼超連結），可任意搬移。2026-11-24。</footer>
+</main>
+</div>
+<script>
+// 輕量語法上色：註解 / 字串 / 關鍵字 / 註解(annotation) 四類就夠教學用
+(function () {
+  var KW = {
+    java: /\b(public|private|protected|static|final|class|record|interface|enum|extends|implements|return|new|if|else|for|while|do|switch|case|default|try|catch|finally|throw|throws|void|int|long|double|boolean|var|null|true|false|this|super|import|package|instanceof|yield)\b/g,
+    sql: /\b(SELECT|INSERT|INTO|UPDATE|DELETE|FROM|WHERE|AND|OR|NOT|EXISTS|JOIN|ON|UNION|SET|CASE|WHEN|THEN|ELSE|END|RETURNING|LIMIT|CAST|AS|IN|IS|NULL|ORDER|BY|GROUP|VALUES|CREATE|TABLE|INDEX)\b/gi,
+    yaml: /^(\s*[\w.-]+)(?=:)/gm,
+    docker: /^(FROM|RUN|COPY|WORKDIR|EXPOSE|ENTRYPOINT|USER|ADD|ENV|ARG|CMD)\b/gm
+  };
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  document.querySelectorAll("pre code[data-lang]").forEach(function (el) {
+    var lang = el.dataset.lang, src = el.textContent, out = "", i = 0;
+    // 先切出註解與字串（避免在裡面再上關鍵字色）
+    var pattern = lang === "yaml" || lang === "docker"
+      ? /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")/g
+      : lang === "sql" || lang === "xml"
+        ? /(--[^\n]*|&lt;!--[\s\S]*?--&gt;|<!--[\s\S]*?-->)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")/g
+        : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(@[A-Za-z][\w.]*)/g;
+    src.replace(pattern, function () {
+      var args = Array.prototype.slice.call(arguments);
+      var m = args[0], idx = args[args.length - 2];
+      var com = args[1], str = args[2], ann = args.length > 5 ? args[3] : null;
+      out += kw(src.slice(i, idx));
+      if (com) out += '<span class="tok-com">' + esc(com) + "</span>";
+      else if (str) out += '<span class="tok-str">' + esc(str) + "</span>";
+      else if (ann) out += '<span class="tok-ann">' + esc(ann) + "</span>";
+      i = idx + m.length;
+      return m;
+    });
+    out += kw(src.slice(i));
+    el.innerHTML = out;
+    function kw(text) {
+      var e = esc(text), re = KW[lang];
+      return re ? e.replace(re, function (w) { return '<span class="tok-kw">' + w + "</span>"; }) : e;
+    }
+  });
+
+  // 目錄高亮：滾動時標記目前章節
+  var links = Array.prototype.slice.call(document.querySelectorAll("#toc a"));
+  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  function onScroll() {
+    var y = window.scrollY + 90, current = 0;
+    targets.forEach(function (t, i) { if (t && t.offsetTop <= y) current = i; });
+    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

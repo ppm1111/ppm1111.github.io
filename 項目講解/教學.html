@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>user_system 實作教學</title>
+<style>
+:root {
+  --bg: #faf9f7;
+  --panel: #ffffff;
+  --text: #2b2a27;
+  --muted: #6e6a62;
+  --line: #e3e0da;
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  --code-bg: #f4f2ee;
+  --code-text: #33312d;
+  --kw: #9333ea;
+  --str: #15803d;
+  --com: #8a867c;
+  --ann: #b45309;
+  --box: #f0ede8;
+  --warn-bg: #fff7ed;
+  --warn-line: #fdba74;
+  --ok-bg: #f0fdf4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --panel: #1c1f24;
+    --text: #e4e2dd;
+    --muted: #9b978e;
+    --line: #30343b;
+    --accent: #7ba3f7;
+    --accent-soft: #1f2a42;
+    --code-bg: #14161a;
+    --code-text: #d6d3cc;
+    --kw: #c792ea;
+    --str: #7cc88a;
+    --com: #7b776d;
+    --ann: #e0a458;
+    --box: #23262c;
+    --warn-bg: #2b2117;
+    --warn-line: #8a5a2b;
+    --ok-bg: #16241a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1c1f24; --text: #e4e2dd; --muted: #9b978e; --line: #30343b;
+  --accent: #7ba3f7; --accent-soft: #1f2a42; --code-bg: #14161a; --code-text: #d6d3cc;
+  --kw: #c792ea; --str: #7cc88a; --com: #7b776d; --ann: #e0a458; --box: #23262c;
+  --warn-bg: #2b2117; --warn-line: #8a5a2b; --ok-bg: #16241a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.75;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 版面：左目錄右內容 */
+.layout { display: flex; max-width: 1200px; margin: 0 auto; }
+nav {
+  width: 240px; flex: none; position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; overflow-y: auto; padding: 24px 8px 24px 16px;
+  border-right: 1px solid var(--line); font-size: 14px;
+}
+nav .brand { font-weight: 700; font-size: 15px; margin: 0 8px 12px; }
+nav a {
+  display: block; color: var(--muted); padding: 5px 10px; border-radius: 6px;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: var(--text); text-decoration: none; background: var(--box); }
+nav a.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+nav a.sub { padding-left: 24px; font-size: 13px; }
+main { flex: 1; min-width: 0; padding: 32px 40px 120px; }
+@media (max-width: 900px) {
+  .layout { display: block; }
+  nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  main { padding: 24px 16px 80px; }
+}
+
+/* 文章元素 */
+h1 { font-size: 30px; line-height: 1.3; margin: 8px 0 4px; }
+h2 {
+  font-size: 23px; margin: 72px 0 12px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+h2 .no { color: var(--accent); margin-right: 10px; font-variant-numeric: tabular-nums; }
+h3 { font-size: 18px; margin: 40px 0 8px; }
+p { margin: 10px 0; }
+ul, ol { margin: 8px 0; padding-left: 26px; }
+li { margin: 4px 0; }
+.lead { color: var(--muted); margin-bottom: 32px; }
+strong { font-weight: 650; }
+table { border-collapse: collapse; margin: 14px 0; font-size: 14.5px; width: 100%; }
+th, td { border: 1px solid var(--line); padding: 7px 12px; text-align: left; vertical-align: top; }
+th { background: var(--box); font-weight: 650; }
+
+/* 行內 code 與代碼區塊 */
+code {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em; background: var(--code-bg); color: var(--code-text);
+  padding: 1px 6px; border-radius: 5px;
+}
+figure.code { margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+figure.code figcaption {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+  color: var(--muted); background: var(--box); padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
+}
+figure.code pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto; background: var(--code-bg);
+  font-size: 13.5px; line-height: 1.6;
+}
+figure.code pre code { background: none; padding: 0; font-size: inherit; }
+.tok-kw { color: var(--kw); }
+.tok-str { color: var(--str); }
+.tok-com { color: var(--com); font-style: italic; }
+.tok-ann { color: var(--ann); }
+
+/* 說明框 */
+.note, .why {
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  background: var(--panel); border-radius: 8px; padding: 10px 16px; margin: 16px 0;
+  font-size: 15px;
+}
+.why::before { content: "為什麼這樣設計"; display: block; font-weight: 700; color: var(--accent); font-size: 13.5px; margin-bottom: 4px; }
+.pitfall { border-left-color: var(--warn-line); background: var(--warn-bg); }
+.pitfall::before { content: "踩過的坑"; display: block; font-weight: 700; color: var(--ann); font-size: 13.5px; margin-bottom: 4px; }
+
+/* 流程圖（div 版）：直向堆疊的盒子 + 箭頭 */
+.flow { margin: 18px 0; display: flex; flex-direction: column; align-items: stretch; max-width: 640px; }
+.flow .step {
+  border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 8px 14px; font-size: 14.5px;
+}
+.flow .step b { font-weight: 650; }
+.flow .step small { color: var(--muted); display: block; font-size: 13px; }
+.flow .step.hi { border-color: var(--accent); background: var(--accent-soft); }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 15px; line-height: 1.4; padding: 1px 0; }
+.flow .arrow span { font-size: 12.5px; margin-left: 8px; }
+
+/* SVG 圖 */
+figure.diagram { margin: 20px 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+svg text { font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; fill: var(--text); }
+svg text.m { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+svg .b { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; rx: 8; }
+svg .bh { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .ln { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+svg .lnh { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .mut { fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav id="toc">
+  <div class="brand">user_system 實作教學</div>
+  <a href="#ch1">1. 全景</a>
+  <a href="#ch2">2. 共用地基（common）</a>
+  <a href="#ch3">3. 看得見的系統：log 與追蹤</a>
+  <a href="#ch4">4. 資料庫層</a>
+  <a href="#ch5">5. 登入與雙 token</a>
+  <a href="#ch6">6. 每個請求的驗證與即時失效</a>
+  <a href="#ch7">7. Refresh 輪替與重用偵測</a>
+  <a href="#ch8">8. 業務模組的分層（user）</a>
+  <a href="#ch9">9. 指標管線</a>
+  <a href="#ch9-collect" class="sub">9.1 收集</a>
+  <a href="#ch9-model" class="sub">9.2 儲存模型</a>
+  <a href="#ch9-rollup" class="sub">9.3 降採樣與保留</a>
+  <a href="#ch9-alert" class="sub">9.4 內存告警</a>
+  <a href="#ch9-ui" class="sub">9.5 監控 UI</a>
+  <a href="#ch10">10. 背景清理與部署</a>
+</nav>
+<main>
+<h1>user_system 實作教學</h1>
+<p class="lead">一個使用者系統（帳號、JWT 登入、RBAC），附帶自建的指標收集與告警，原則是<strong>不依賴外部服務</strong>：log 寫檔、指標進同一個 PostgreSQL、監控 UI 和告警都由 Spring Boot 自己提供。本文按模組分章，每章先講「為什麼這樣設計」，再給圖和真實代碼對照。技術棧：Java 25、Spring Boot 4、Maven 多模組、MyBatis、Liquibase、PostgreSQL、Redis。</p>
+
+<section id="ch1">
+<h2><span class="no">1</span>全景</h2>
+<p>整個系統只有四個容器：nginx、Spring Boot app、PostgreSQL、Redis。沒有 Prometheus、沒有 Grafana、沒有 ELK——指標、告警、監控頁面全部由 app 自己提供，資料就放在業務用的同一顆 PostgreSQL 裡。</p>
+
+<div class="why">小系統引入一套完整的可觀測性堆疊（Prometheus + Grafana + Alertmanager）要多維運三四個服務。這個專案選擇反向操作：app 每 10 秒把指標寫進自己的 DB，用一頁靜態 HTML 畫圖，告警規則在內存評估、觸發才寫一筆 <code>alerts</code>。代價是單機限制（見第 10 章結尾），換到的是部署面只剩 docker-compose 四個服務。</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 640 230" role="img" aria-label="系統架構圖">
+  <rect class="b" x="10" y="95" width="90" height="40" rx="8"/><text x="55" y="120" text-anchor="middle" font-size="14">Client</text>
+  <rect class="b" x="150" y="95" width="90" height="40" rx="8"/><text x="195" y="120" text-anchor="middle" font-size="14">nginx</text>
+  <rect class="bh" x="290" y="85" width="130" height="60" rx="8"/>
+  <text x="355" y="110" text-anchor="middle" font-size="14">Spring Boot app</text>
+  <text x="355" y="130" text-anchor="middle" font-size="11" class="mut">API + 指標 + 告警 + UI</text>
+  <rect class="b" x="490" y="20" width="140" height="52" rx="8"/>
+  <text x="560" y="42" text-anchor="middle" font-size="13">PostgreSQL</text>
+  <text x="560" y="60" text-anchor="middle" font-size="11" class="mut">業務 + 指標 + alerts</text>
+  <rect class="b" x="490" y="92" width="140" height="52" rx="8"/>
+  <text x="560" y="114" text-anchor="middle" font-size="13">Redis</text>
+  <text x="560" y="132" text-anchor="middle" font-size="11" class="mut">rate limit / principal 快取</text>
+  <rect class="b" x="490" y="164" width="140" height="52" rx="8"/>
+  <text x="560" y="186" text-anchor="middle" font-size="13">logs/*.log</text>
+  <text x="560" y="204" text-anchor="middle" font-size="11" class="mut">app / request / sql</text>
+  <path class="ln" d="M100 115 H143"/><polygon points="150,115 141,110 141,120" fill="var(--muted)"/>
+  <text x="123" y="108" text-anchor="middle" font-size="10.5" class="mut">:80</text>
+  <path class="ln" d="M240 115 H283"/><polygon points="290,115 281,110 281,120" fill="var(--muted)"/>
+  <text x="264" y="108" text-anchor="middle" font-size="10.5" class="mut">:8080</text>
+  <path class="ln" d="M420 97 C460 80 460 60 483 50"/><polygon points="490,47 480,47 483,56" fill="var(--muted)"/>
+  <path class="ln" d="M420 118 H483"/><polygon points="490,118 481,113 481,123" fill="var(--muted)"/>
+  <path class="ln" d="M420 135 C460 155 460 180 483 188"/><polygon points="490,190 481,184 480,193" fill="var(--muted)"/>
+  <text x="452" y="200" text-anchor="middle" font-size="10.5" class="mut">logback</text>
+</svg>
+<figcaption>nginx 是唯一對外入口，也負責把真實連線 IP 寫進 <code>X-Forwarded-For</code>（防偽造 IP 繞過 rate limit）。時區：app、DB、log 一律 UTC。</figcaption>
+</figure>
+
+<h3>Maven 模組</h3>
+<p>六個模組依賴方向單一，往下不往回：</p>
+<table>
+<tr><th>模組</th><th>內容</th></tr>
+<tr><td><code>common</code></td><td>跨模組共用的基礎設施：<code>CommonResponse</code>、例外處理、i18n、<code>TimeProvider</code>、rate limit、request / SQL log、告警寫入（<code>AlertRecorder</code>）、Argon2 密碼編碼</td></tr>
+<tr><td><code>database</code></td><td>Liquibase changelog（所有表結構）、MyBatis TypeHandler</td></tr>
+<tr><td><code>security</code></td><td>Spring Security、JWT 簽發與驗證、登入 / refresh / 登出、<code>PrincipalCache</code></td></tr>
+<tr><td><code>user</code></td><td>業務：使用者 / 角色 / 權限 / 個人資料的 CRUD</td></tr>
+<tr><td><code>metrics</code></td><td>指標過濾、寫入、降採樣、內存告警、監控 UI（<code>/metrics-ui</code>）</td></tr>
+<tr><td><code>clean</code></td><td>稽核資料清理：<code>activity_logs</code> / <code>alerts</code> 保留期排程</td></tr>
+<tr><td><code>main</code></td><td>進入點 <code>Main.java</code>、<code>application*.yml</code>、<code>logback-spring.xml</code>，把以上全部組起來</td></tr>
+</table>
+<p>慣例：<strong>跨模組的基礎設施（filter、interceptor、logging）一律放 <code>common</code></strong>，業務模組只放自己的事。</p>
+
+<h3>一筆請求經過的元件</h3>
+<p>後面各章講的東西，幾乎都能在這條縱切線上找到位置。先把它記住：</p>
+<div class="flow">
+  <div class="step"><b>nginx</b> <small>反向代理，寫入 X-Forwarded-For</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>RequestIdFilter</b> <small>讀 / 產生 request_id，放進 MDC（第 3 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>RequestLogFilter</b> <small>計時開始——包含後面 JWT 驗證的時間（第 3 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>BearerTokenAuthenticationFilter</b> <small>JWT → AuthUser，查 PrincipalCache（第 6 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>RateLimitInterceptor</b> <small>依 @RateLimit 規則扣 token bucket，超過回 429</small></div>
+  <div class="arrow">↓</div>
+  <div class="step hi"><b>Controller → Command/Service → Repo / Mapper</b> <small>業務（第 8 章）；每筆 SQL 經過 SqlLogInterceptor 計時（第 3 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>RequestLogFilter</b> <small>計時結束，寫 request.log 與 app.request.slow 指標</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>GlobalExceptionHandler</b> <small>任何例外 → CommonResponse（第 2 章）</small></div>
+</div>
+</section>
+
+<section id="ch2">
+<h2><span class="no">2</span>共用地基（common）</h2>
+<p>所有 API 的回應長一個樣、所有例外走同一個出口、所有時間來自同一個來源——這三件事都在 <code>common</code> 模組，業務代碼因此不用自己處理「包裝回應」「接例外」「取時間」。</p>
+
+<h3>2.1 統一回應：CommonResponse</h3>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/response/CommonResponse.java</figcaption>
+<pre><code data-lang="java">public record CommonResponse&lt;T&gt;(
+        String status,
+        String message,
+        T data
+) {
+    public static &lt;T&gt; CommonResponse&lt;T&gt; success(T data) {
+        return new CommonResponse&lt;&gt;(CommonConstant.STATUS_OK, CommonConstant.SUCCESS_MESSAGE, data);
+    }
+
+    /** @param message 依請求語言翻譯後的訊息；錯誤種類由 HTTP status code 表示 */
+    public static &lt;T&gt; CommonResponse&lt;T&gt; error(String message, T data) {
+        return new CommonResponse&lt;&gt;(CommonConstant.STATUS_ERROR, message, data);
+    }
+}</code></pre>
+</figure>
+<p>注意設計取捨：<strong>錯誤「種類」由 HTTP status code 表示</strong>，body 裡的 <code>message</code> 只是翻譯好的人話。客戶端判斷邏輯看狀態碼就夠，不用解析字串。分頁另有 <code>PageCommonResponse</code>，欄位是 <code>total_count</code> / <code>total_page</code> / <code>page_num</code> / <code>page_count</code>（全域 Jackson 設成 SNAKE_CASE）。</p>
+
+<h3>2.2 全域例外處理</h3>
+<div class="why">自己從零寫 <code>@ExceptionHandler</code> 很容易把 Spring MVC 原生的語義弄丟——例如 405 要帶 <code>Allow</code> header、415 的狀態碼。所以 <code>GlobalExceptionHandler</code> 繼承 <code>ResponseEntityExceptionHandler</code>：Spring 自己的例外<strong>沿用 Spring 決定的狀態碼與 header，只把 body 換成 CommonResponse</strong>；自訂例外（<code>BaseException</code> 家族）才由例外自己決定狀態碼。</div>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/exception/GlobalExceptionHandler.java（L61-L89 節錄）</figcaption>
+<pre><code data-lang="java">@ExceptionHandler(BaseException.class)
+public ResponseEntity&lt;CommonResponse&lt;Void&gt;&gt; handleBase(BaseException e) {
+    HttpStatus status = e.getHttpStatus();
+    if (status.is5xxServerError()) {
+        log.error("business exception", e);
+    } else {
+        log.warn("{} {}", status.value(), e.getMessage());
+    }
+    return build(status, e.localizedMessage(), null);
+}
+
+/** @Valid @RequestBody 驗證失敗：data = {欄位: 訊息} */
+@Override
+protected @Nullable ResponseEntity&lt;Object&gt; handleMethodArgumentNotValid(
+        MethodArgumentNotValidException e, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+    Map&lt;String, String&gt; errors = new LinkedHashMap&lt;&gt;();
+    e.getBindingResult().getFieldErrors()
+            .forEach(fe -&gt; errors.putIfAbsent(snakeCasePath(fe.getField()), fe.getDefaultMessage()));
+    return body(HttpStatus.BAD_REQUEST, headers, lang("validation_failed"), errors);
+}</code></pre>
+</figure>
+<ul>
+<li><strong>4xx 記 WARN、5xx 記 ERROR + stack trace</strong>。意義在第 9 章會回收：只有真的沒預期到的例外才是 500，所以「5xx 告警」不會被亂打的請求觸發。</li>
+<li>驗證錯誤回 400，<code>data</code> 是 <code>{欄位: 訊息}</code>，欄位名轉 snake_case 跟回應格式一致。</li>
+<li>429 另外加 <code>Retry-After</code> header，配合 rate limit。</li>
+</ul>
+
+<h3>2.3 可測試的時間：TimeProvider</h3>
+<p>全專案取「現在」只有一個入口：<code>TimeProvider.now()</code>（回 UTC <code>Instant</code>）。它和 Spring 的 <code>Clock</code> bean 共用同一個時間來源，測試時注入 <code>Clock.fixed(...)</code> 就能把整個系統的時間釘死——後面章節的登入鎖定、refresh 過期、指標窗口、保留期清理，測試全靠這招寫成純單元測試。</p>
+<div class="note">設定類也有一個共同慣例：全部是 <code>record</code> + <code>@ConfigurationProperties</code>，在 compact constructor 裡驗證，<strong>設定不合法時啟動直接失敗</strong>（fail fast），而不是跑到一半才發現門檻是負數。</div>
+</section>
+
+<section id="ch3">
+<h2><span class="no">3</span>看得見的系統：log 與追蹤</h2>
+<p>出問題時要能回答三個問題：這個請求做了什麼？跑了哪些 SQL？是誰發的？答案是三個 log 檔加 MDC 關聯：</p>
+<table>
+<tr><th>檔案</th><th>logger</th><th>內容</th></tr>
+<tr><td><code>logs/app.log</code></td><td>一般</td><td>應用程式 log</td></tr>
+<tr><td><code>logs/request.log</code></td><td><code>app.request</code></td><td>每個請求：method、path、status、耗時、IP、user_id、UA</td></tr>
+<tr><td><code>logs/sql.log</code></td><td><code>app.sql</code></td><td>每筆 SQL：statement、耗時、筆數、SQL、參數（敏感參數遮成 <code>***</code>）</td></tr>
+</table>
+<p>每一行都帶 <code>traceId</code> / <code>spanId</code> / <code>request_id</code> / <code>user_id</code>（MDC），拿任何一行的 traceId 就能把三個檔案裡同一個請求的紀錄全撈出來。<code>app.request</code> 和 <code>app.sql</code> 設 <code>additivity=false</code>，不會重複寫進 app.log。</p>
+
+<h3>3.1 MDC 怎麼填進去</h3>
+<div class="flow">
+  <div class="step"><b>RequestIdFilter</b><small>全域 filter、最高優先序：讀 X-Request-ID header（沒帶就產 UUID，截 64 字），放 MDC request_id</small></div>
+  <div class="arrow">↓ <span>進 security filter chain</span></div>
+  <div class="step"><b>JWT 驗證</b><small>（第 6 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>UserIdMdcFilter</b><small>掛在 JWT 驗證之後：放 MDC user_id</small></div>
+</div>
+<div class="why"><code>UserIdMdcFilter</code> 和 <code>RequestLogFilter</code> 都用 <code>setEnabled(false)</code> 關掉 Servlet 容器的全域註冊，改由 security 模組手動掛進 security chain 的正確位置——user_id 要等 JWT 驗完才有，而 request 計時要「包住」JWT 驗證才能量到完整耗時。filter 的位置就是語義。</div>
+
+<h3>3.2 SQL 計時：MyBatis Interceptor</h3>
+<p><code>SqlLogInterceptor</code> 攔截 MyBatis <code>Executor</code> 的 <code>update</code> / <code>query</code>，一個攔截點同時餵三個出口：<code>app.sql</code> timer 指標、超過門檻再記 <code>app.sql.slow</code> counter、以及 sql.log。</p>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/logging/SqlLogInterceptor.java（L66-L99 節錄）</figcaption>
+<pre><code data-lang="java">@Override
+public Object intercept(Invocation invocation) throws Throwable {
+    long start = System.nanoTime();
+    Object result = null;
+    Throwable error = null;
+    try {
+        result = invocation.proceed();
+        return result;
+    } catch (Throwable e) {
+        error = e;
+        throw e;
+    } finally {
+        record(invocation.getArgs(), result, error, System.nanoTime() - start);   // 成功失敗都計時
+    }
+}
+
+private void record(Object[] args, @Nullable Object result, @Nullable Throwable error, long nanos) {
+    MappedStatement ms = (MappedStatement) args[0];
+    String statement = shortStatementId(ms.getId());   // SecurityUserMapper.findById
+    boolean slow = nanos &gt;= threshold.toNanos();
+    if (meterRegistry != null) {
+        Timer.builder(TIMER_METRIC).tag("statement", statement)
+                .register(meterRegistry).record(nanos, TimeUnit.NANOSECONDS);
+        if (slow) {
+            Counter.builder(SLOW_METRIC).tag("statement", statement)
+                    .register(meterRegistry).increment();
+        }
+    }
+    // …接著依 logger level 決定要不要寫 sql.log（debug 全記、info 只記慢的、off 不寫但指標照記）
+}</code></pre>
+</figure>
+<ul>
+<li><strong>finally 計時</strong>：SQL 丟例外也要算一筆，不然最慢的（逾時的）反而沒紀錄。</li>
+<li><strong>tag 用 statement id 不用 SQL 全文</strong>：<code>SecurityUserMapper.findById</code> 這種短名，tag 基數有限，指標才不會爆炸。</li>
+<li>參數名含 <code>password</code> / <code>secret</code> / <code>hash</code> 或以 <code>token</code> 結尾的值寫 log 前遮成 <code>***</code>。</li>
+<li>它在 <code>common</code> 模組，用 <code>@ConditionalOnClass</code> 偵測到 MyBatis 才註冊——common 不強迫每個專案都用 MyBatis。</li>
+</ul>
+
+<h3>3.3 慢請求門檻與「人類可讀」的 log</h3>
+<p><code>RequestLogFilter</code> 的慢請求門檻可以依路徑個別設定（<code>app.logging.request</code>），指標 <code>app.request.slow</code> 的 uri tag 用<strong>路由樣板</strong>（<code>/api/v1/user/{id}</code>）而不是實際路徑，同樣是防 tag 基數爆炸。</p>
+<p>log 的寫法全專案統一：訊息是一句人話，結構化欄位用 SLF4J 的 <code>addKeyValue</code> 附在後面，logback pattern 用 <code>%kvp</code> 輸出。例如：</p>
+<figure class="code">
+<figcaption>寫法與輸出對照</figcaption>
+<pre><code data-lang="java">log.atInfo().addKeyValue("table", table).addKeyValue("deleted", total)
+        .log("retention cleanup done");
+// 輸出：retention cleanup done table=alerts deleted=1024</code></pre>
+</figure>
+<p>由 logger level 決定寫多少：<code>debug</code> 每筆都記（慢的升 WARN）、<code>info</code> 只記慢的、<code>off</code> 不寫 log 但 <code>.slow</code> 指標照樣計數——關 log 省 IO，不等於放棄監控。</p>
+</section>
+
+<section id="ch4">
+<h2><span class="no">4</span>資料庫層</h2>
+<p>所有表結構——包含指標表和告警表——都由 <code>database</code> 模組的 Liquibase changelog 管理，app 啟動時自動套用。這個模組的 Java 代碼只有一個 <code>UuidTypeHandler</code>（PostgreSQL uuid ↔ <code>java.util.UUID</code>），它的價值在 SQL 檔。</p>
+
+<h3>4.1 Changelog 結構</h3>
+<p>master 檔（<code>db/changelog/db.changelog-master.yml</code>）按順序 <code>include</code> 每個 formatted SQL 檔，鐵律是<strong>不可修改已執行過的檔案</strong>——Liquibase 用 checksum 偵測，改了舊檔啟動會直接失敗。要變更就加新的 changeset：</p>
+<table>
+<tr><th>changeset</th><th>表</th></tr>
+<tr><td>001</td><td><code>users</code>：帳號、Argon2id 密碼雜湊、<code>status</code>、<code>token_version</code></td></tr>
+<tr><td>002</td><td><code>roles</code>、<code>user_roles</code>、<code>permissions</code>、<code>role_permissions</code>（RBAC）</td></tr>
+<tr><td>003</td><td><code>refresh_tokens</code>：雜湊存放、family、輪替鏈、撤銷原因</td></tr>
+<tr><td>004</td><td>預設管理員 <code>admin</code>（上線後要改密碼）</td></tr>
+<tr><td>005–007</td><td><code>metrics</code>、<code>metrics_series</code>、<code>metrics_sample</code>、<code>metrics_sample_hourly</code>（第 9 章）</td></tr>
+<tr><td>008</td><td><code>users</code> 加 <code>failed_login_count</code>、<code>locked_until</code>（登入鎖定，第 5 章）</td></tr>
+<tr><td>009–012</td><td><code>activity_logs</code>（操作紀錄）、權限種子、roles 軟刪除、trace / request id 欄位</td></tr>
+<tr><td>013</td><td><code>alerts</code>（告警事件，append-only，含 <code>dedup_key</code> 與 JSONB <code>detail</code>）</td></tr>
+</table>
+
+<figure class="diagram">
+<svg viewBox="0 0 660 250" role="img" aria-label="ER 圖">
+  <rect class="b" x="20" y="20" width="110" height="36" rx="8"/><text x="75" y="43" text-anchor="middle" font-size="13" class="m">users</text>
+  <rect class="b" x="180" y="20" width="110" height="36" rx="8"/><text x="235" y="43" text-anchor="middle" font-size="13" class="m">user_roles</text>
+  <rect class="b" x="340" y="20" width="110" height="36" rx="8"/><text x="395" y="43" text-anchor="middle" font-size="13" class="m">roles</text>
+  <rect class="b" x="340" y="80" width="150" height="36" rx="8"/><text x="415" y="103" text-anchor="middle" font-size="13" class="m">role_permissions</text>
+  <rect class="b" x="530" y="80" width="110" height="36" rx="8"/><text x="585" y="103" text-anchor="middle" font-size="13" class="m">permissions</text>
+  <rect class="b" x="20" y="80" width="130" height="36" rx="8"/><text x="85" y="103" text-anchor="middle" font-size="13" class="m">refresh_tokens</text>
+  <path class="ln" d="M130 38 H180"/><path class="ln" d="M290 38 H340"/>
+  <path class="ln" d="M395 56 V80"/><path class="ln" d="M490 98 H530"/>
+  <path class="ln" d="M75 56 V80"/>
+  <rect class="bh" x="20" y="170" width="110" height="36" rx="8"/><text x="75" y="193" text-anchor="middle" font-size="13" class="m">metrics</text>
+  <rect class="bh" x="180" y="170" width="130" height="36" rx="8"/><text x="245" y="193" text-anchor="middle" font-size="13" class="m">metrics_series</text>
+  <rect class="bh" x="360" y="148" width="150" height="36" rx="8"/><text x="435" y="171" text-anchor="middle" font-size="13" class="m">metrics_sample</text>
+  <rect class="bh" x="360" y="196" width="190" height="36" rx="8"/><text x="455" y="219" text-anchor="middle" font-size="13" class="m">metrics_sample_hourly</text>
+  <path class="ln" d="M130 188 H180"/>
+  <path class="ln" d="M310 182 C335 175 340 168 360 166"/>
+  <path class="ln" d="M310 194 C335 200 340 208 360 212"/>
+  <text x="340" y="150" font-size="10.5" class="mut">10 秒 / 14 天</text>
+  <text x="335" y="245" font-size="10.5" class="mut">1 小時 / 1 年</text>
+  <rect class="b" x="530" y="20" width="110" height="36" rx="8"/><text x="585" y="43" text-anchor="middle" font-size="13" class="m">alerts</text>
+  <text x="585" y="68" text-anchor="middle" font-size="10.5" class="mut">append-only</text>
+</svg>
+<figcaption>上半部是業務（RBAC + token），下半部是指標三層結構（第 9 章詳述）。</figcaption>
+</figure>
+
+<h3>4.2 MyBatis 配置</h3>
+<p>寫在 <code>main/src/main/resources/application.yml</code>，三行各有理由：</p>
+<figure class="code">
+<figcaption>main/src/main/resources/application.yml（mybatis 段）</figcaption>
+<pre><code data-lang="yaml">mybatis:
+  configuration:
+    map-underscore-to-camel-case: true        # DB snake_case ↔ Java camelCase
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl   # 關內建 SQL log，統一走 sql.log
+  type-handlers-package: com.example.database.typehandler</code></pre>
+</figure>
+<p>Mapper XML 跟 mapper 介面放在同一個包路徑（resources 底下對應位置），每個模組管自己的 mapper——<code>database</code> 模組不集中持有 SQL，它只管表結構。</p>
+</section>
+
+<section id="ch5">
+<h2><span class="no">5</span>登入與雙 token</h2>
+<p>認證用兩種 token，角色完全不同：</p>
+<table>
+<tr><th></th><th>Access token</th><th>Refresh token</th></tr>
+<tr><td>形式</td><td>JWT（HS256），自含 <code>sub=userId</code>、<code>ver=token_version</code>、<code>jti</code>、<code>iss</code>、<code>exp</code></td><td>隨機 32 bytes 的不透明字串</td></tr>
+<tr><td>有效期</td><td>15 分鐘</td><td>14 天</td></tr>
+<tr><td>伺服器端儲存</td><td>不存（無狀態驗證）</td><td>DB 只存 SHA-256 雜湊</td></tr>
+<tr><td>用途</td><td>每個 API 請求</td><td>換發新的 access + refresh（每用一次就輪替，第 7 章）</td></tr>
+</table>
+<div class="why">access token 走 JWT 讓每個請求的驗證不打 DB（簽章 + 過期檢查就夠）；refresh token 反過來必須存 DB，因為它要支援撤銷、輪替、重用偵測——這些都是「伺服器要記得狀態」的能力。只存雜湊則是防 DB 外洩：撈走整張表也拿不到可用的 token。</div>
+
+<h3>5.1 登入流程：三個安全設計</h3>
+<figure class="diagram">
+<svg viewBox="0 0 680 300" role="img" aria-label="登入流程圖">
+  <rect class="b" x="20" y="20" width="200" height="40" rx="8"/><text x="120" y="45" text-anchor="middle" font-size="13">findByAccount(帳號或 email)</text>
+  <rect class="b" x="300" y="20" width="180" height="40" rx="8"/><text x="390" y="38" text-anchor="middle" font-size="12.5">帳號不存在：</text><text x="390" y="53" text-anchor="middle" font-size="12.5">dummy Argon2 → 401</text>
+  <path class="ln" d="M220 40 H293"/><polygon points="300,40 291,35 291,45" fill="var(--muted)"/>
+  <rect class="bh" x="20" y="90" width="200" height="40" rx="8"/><text x="120" y="108" text-anchor="middle" font-size="12.5">reserveLoginAttempt</text><text x="120" y="123" text-anchor="middle" font-size="11" class="mut">一句原子 UPDATE 佔用一次嘗試</text>
+  <path class="ln" d="M120 60 V83"/><polygon points="120,90 115,81 125,81" fill="var(--muted)"/>
+  <rect class="b" x="300" y="90" width="180" height="40" rx="8"/><text x="390" y="108" text-anchor="middle" font-size="12.5">鎖定中（回 null）：</text><text x="390" y="123" text-anchor="middle" font-size="12.5">dummy Argon2 → 401</text>
+  <path class="ln" d="M220 110 H293"/><polygon points="300,110 291,105 291,115" fill="var(--muted)"/>
+  <rect class="b" x="20" y="160" width="200" height="40" rx="8"/><text x="120" y="185" text-anchor="middle" font-size="13">Argon2 比對密碼</text>
+  <path class="ln" d="M120 130 V153"/><polygon points="120,160 115,151 125,151" fill="var(--muted)"/>
+  <rect class="b" x="300" y="160" width="270" height="40" rx="8"/><text x="435" y="178" text-anchor="middle" font-size="12.5">錯誤 → 401；若這次剛好觸發鎖定</text><text x="435" y="193" text-anchor="middle" font-size="12.5">→ 寫 auth.login_locked 告警</text>
+  <path class="ln" d="M220 180 H293"/><polygon points="300,180 291,175 291,185" fill="var(--muted)"/>
+  <rect class="b" x="20" y="230" width="200" height="40" rx="8"/><text x="120" y="248" text-anchor="middle" font-size="12.5">resetLoginFailures</text><text x="120" y="263" text-anchor="middle" font-size="11" class="mut">清計數與剛觸發的鎖定</text>
+  <path class="ln" d="M120 200 V223"/><polygon points="120,230 115,221 125,221" fill="var(--muted)"/>
+  <rect class="bh" x="300" y="230" width="200" height="40" rx="8"/><text x="400" y="248" text-anchor="middle" font-size="12.5">issue()：發 access(JWT)</text><text x="400" y="263" text-anchor="middle" font-size="12.5">+ refresh（新 family）</text>
+  <path class="ln" d="M220 250 H293"/><polygon points="300,250 291,245 291,255" fill="var(--muted)"/>
+  <text x="588" y="45" font-size="11" class="mut">←所有失敗</text>
+  <text x="588" y="58" font-size="11" class="mut">回同樣的 401</text>
+</svg>
+<figcaption>注意右欄：不管哪種失敗，回應一律相同的 401，而且都跑一次 Argon2。</figcaption>
+</figure>
+
+<figure class="code">
+<figcaption>security/src/main/java/com/example/security/auth/service/impl/AuthServiceImpl.java（L99-L135 節錄）</figcaption>
+<pre><code data-lang="java">public TokenPair login(String account, String password, String userAgent) {
+    Instant now = timeProvider.now();
+    SecurityUser user = userMapper.findByAccount(account);
+    if (user == null) {
+        passwordEncoder.matches(password, dummyPasswordHash);   // ① 帳號不存在也比對一次
+        count(LOGIN_FAILURE_METRIC, "user_not_found");
+        throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+    Integer attempts = user.isLocked(now) ? null : userMapper.reserveLoginAttempt(user.id(),
+            loginLockProperties.maxAttempts(), now.plus(loginLockProperties.lockDuration()), now);
+    if (attempts == null) {
+        // ② 鎖定中不比對真正的密碼：猜對也不能登入；跑 dummy 比對讓回應時間一致
+        passwordEncoder.matches(password, dummyPasswordHash);
+        count(LOGIN_FAILURE_METRIC, "locked");
+        throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+    if (!passwordEncoder.matches(password, user.passwordHash())) {
+        count(LOGIN_FAILURE_METRIC, "bad_password");
+        if (attempts == 0) {   // 這次嘗試剛好觸發鎖定
+            alertRecorder.record("auth.login_locked", AlertSeverity.WARNING, …);
+        }
+        throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+    userMapper.resetLoginFailures(user.id());   // ③ 密碼正確：清掉剛才佔用的次數
+    if (!user.isActive()) {
+        throw new ForbiddenException("account_not_active");
+    }
+    return issue(user, UUID.randomUUID(), null, userAgent).pair();
+}</code></pre>
+</figure>
+
+<p>三個設計各自防一種攻擊：</p>
+<ol>
+<li><strong>防 timing attack</strong>（①②）：帳號不存在、帳號鎖定時也跑一次 Argon2 dummy 比對。Argon2 故意很慢（十幾毫秒級），不補這一下，攻擊者從回應時間就能判斷「帳號存不存在」。</li>
+<li><strong>防平行暴力猜測</strong>：比對密碼<em>之前</em>先用一句原子 SQL「佔用」一次嘗試。就算同時送一萬個請求，也只有前 <code>max-attempts</code>（預設 5）個能真的比對密碼：</li>
+</ol>
+<figure class="code">
+<figcaption>security/src/main/resources/com/example/security/mapper/SecurityUserMapper.xml（L81-L88）</figcaption>
+<pre><code data-lang="sql">UPDATE users
+SET failed_login_count = CASE WHEN failed_login_count + 1 &gt;= #{maxAttempts} THEN 0 ELSE failed_login_count + 1 END,
+    locked_until       = CASE WHEN failed_login_count + 1 &gt;= #{maxAttempts} THEN CAST(#{lockUntil} AS TIMESTAMPTZ) ELSE NULL END
+WHERE id = #{userId}
+  AND (locked_until IS NULL OR locked_until &lt;= #{now})
+RETURNING failed_login_count</code></pre>
+</figure>
+<ol start="3">
+<li><strong>不耗光連線池</strong>：<code>login</code> 刻意<em>不包交易</em>。每句 UPDATE 自動 commit，比對密碼（最慢的一步）期間不持有 row lock 也不佔 DB 連線——同一帳號被狂打時，資料庫不會被拖垮。</li>
+</ol>
+<div class="note">登入鎖定（以帳號計）和 rate limit（以 IP 計）是互補的：rate limit 擋不了「換 IP 慢慢猜同一個帳號」，登入鎖定擋不了「掃一堆帳號各猜一次」。兩個都要。帳號不存在時不計數（沒有資料列可記），交給 rate limit。</div>
+</section>
+
+<section id="ch6">
+<h2><span class="no">6</span>每個請求的驗證與即時失效</h2>
+<p>JWT 無狀態驗證有個經典難題：token 簽出去 15 分鐘內怎麼撤銷？這個專案的答案是 <code>token_version</code> + <code>PrincipalCache</code>——每個請求除了驗簽章，還會核對一份「幾乎都命中 Redis 快取」的使用者現況。</p>
+
+<h3>6.1 驗證鏈</h3>
+<div class="flow">
+  <div class="step"><b>PublicPathIgnoringBearerTokenResolver</b><small>公開路徑（/login、/refresh…）不解析 Authorization header——帶著過期 token 來登入不該被擋成 401</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>NimbusJwtDecoder</b><small>驗 HS256 簽章、exp、issuer</small></div>
+  <div class="arrow">↓</div>
+  <div class="step hi"><b>JwtUserPrincipalAuthenticationConverter</b><small>查 PrincipalCache → 核對 active 與 token_version → 組 AuthUser + authorities</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>@PreAuthorize("hasAuthority('user:write')")</b><small>controller 方法級權限檢查</small></div>
+</div>
+
+<figure class="code">
+<figcaption>security/src/main/java/com/example/security/jwt/JwtUserPrincipalAuthenticationConverter.java（L36-L58）</figcaption>
+<pre><code data-lang="java">@Override
+public AbstractAuthenticationToken convert(Jwt jwt) {
+    long userId = parseUserId(jwt);
+    Object version = jwt.getClaim(JwtTokenProvider.CLAIM_TOKEN_VERSION);
+    if (!(version instanceof Number tokenVersion)) {
+        throw new InvalidBearerTokenException("missing token version");
+    }
+
+    CachedPrincipal user = principalCache.load(userId);
+    if (user != null &amp;&amp; user.tokenVersion() &lt; tokenVersion.intValue()) {
+        // token 比快取新：快取是 token_version 變更前寫入的舊資料，改查 DB
+        user = principalCache.reload(userId);
+    }
+    if (user == null || !user.isActive() || user.tokenVersion() != tokenVersion.intValue()) {
+        throw new InvalidBearerTokenException("token is no longer valid");
+    }
+
+    Set&lt;String&gt; codes = new LinkedHashSet&lt;&gt;(user.authorities());
+    List&lt;SimpleGrantedAuthority&gt; authorities = codes.stream().map(SimpleGrantedAuthority::new).toList();
+    boolean isAdmin = codes.contains(ROLE_ADMIN);
+    AuthUser principal = new AuthUser(user.id(), user.username(), user.email(), user.roles(), isAdmin, Set.copyOf(codes));
+    return UsernamePasswordAuthenticationToken.authenticated(principal, jwt, authorities);
+}</code></pre>
+</figure>
+
+<h3>6.2 即時失效的兩個機制</h3>
+<ul>
+<li><strong><code>token_version</code></strong>：<code>users</code> 表的整數欄位，簽 JWT 時放進 <code>ver</code> claim。要讓某人所有 token 立即失效（<code>/logout-all</code>、停用帳號、改密碼），把 <code>token_version + 1</code> 即可——所有舊 token 的 <code>ver</code> 對不上，下一個請求就被拒。</li>
+<li><strong><code>PrincipalCache</code></strong>：使用者 + 角色 + 權限這份資料每個請求都要，查 DB 是 3 句 SQL，所以快取在 Redis（key <code>auth:principal:{user_id}</code>，TTL 5 分鐘）。細節：
+  <ul>
+  <li>快取值帶「全域 gen + 個人 ver」兩個戳記：<code>evict(userId)</code> 把個人 ver INCR（單人失效）、<code>evictAll()</code> 把全域 gen INCR（角色權限改了、影響很多人時一次全失效），不用掃 key。</li>
+  <li><strong>交易中呼叫 evict 會等 commit 之後才執行</strong>（<code>afterCommit</code>）——先清快取再 rollback 的話，別的請求會把舊資料重新灌回快取。</li>
+  <li>Redis 故障直接退回查 DB（timeout 1 秒），驗證結果不受影響，只是慢一點。</li>
+  <li>上面代碼裡的 <code>reload</code> 分支處理「token 比快取新」：剛 <code>logout-all</code> 完又立刻登入，新 token 的 ver 比快取裡的大，這時略過快取查 DB，不會把剛簽的合法 token 誤判成無效。</li>
+  </ul>
+</li>
+</ul>
+
+<h3>6.3 權限從哪裡來（RBAC）</h3>
+<figure class="code">
+<figcaption>security/src/main/resources/com/example/security/mapper/SecurityUserMapper.xml（L46-L61）</figcaption>
+<pre><code data-lang="sql">SELECT p.code
+FROM user_roles ur
+JOIN roles r ON r.id = ur.role_id
+JOIN role_permissions rp ON rp.role_id = ur.role_id
+JOIN permissions p ON p.id = rp.permission_id
+WHERE ur.user_id = #{userId}
+  AND r.deleted_at IS NULL          -- 已軟刪除的角色不給權限
+UNION
+SELECT p.code FROM permissions p WHERE &lt;adminRoleExists&gt;   -- admin 拿全部權限
+UNION
+SELECT 'ROLE_ADMIN' WHERE &lt;adminRoleExists&gt;</code></pre>
+</figure>
+<p>一般使用者的權限 = 自己角色對應的 permission code；擁有 <code>is_admin</code> 角色的人直接拿<em>全部</em>權限外加 <code>ROLE_ADMIN</code>——新權限上線時不用記得補給 admin。業務代碼取當前使用者用 <code>PrincipalUtil.current() / isSelf() / isAdminOrSystem()</code>。</p>
+</section>
+
+<section id="ch7">
+<h2><span class="no">7</span>Refresh 輪替與重用偵測</h2>
+<p>refresh token <strong>每用一次就換發新的</strong>（rotation），舊的標記為 rotated。同一個登入會話的所有 token 用 <code>family_token_id</code> 串成一條鏈。這個結構讓系統能偵測「token 被偷」：</p>
+<div class="why">假設攻擊者偷到一份 refresh token。他用了，拿到新 token——但<em>原主人</em>的 App 之後也會拿「同一份舊 token」來換發。此時伺服器看到一個「已輪替過的 token 又被使用」，無法分辨誰是小偷，但可以確定<strong>這條鏈外洩了</strong>，正確動作是把整個 family 全部撤銷：雙方都被登出，攻擊者手上的新 token 也作廢。這就是 OAuth2 的 refresh token rotation + reuse detection。</div>
+
+<figure class="diagram">
+<svg viewBox="0 0 660 280" role="img" aria-label="refresh 重用偵測時序圖">
+  <text x="90" y="24" text-anchor="middle" font-size="13" font-weight="600">原主人</text>
+  <text x="330" y="24" text-anchor="middle" font-size="13" font-weight="600">伺服器</text>
+  <text x="570" y="24" text-anchor="middle" font-size="13" font-weight="600">攻擊者</text>
+  <path class="ln" d="M90 34 V260" stroke-dasharray="4 4"/>
+  <path class="ln" d="M330 34 V260" stroke-dasharray="4 4"/>
+  <path class="ln" d="M570 34 V260" stroke-dasharray="4 4"/>
+  <path class="lnh" d="M564 60 H336"/><polygon points="330,60 339,55 339,65" fill="var(--accent)"/>
+  <text x="450" y="52" text-anchor="middle" font-size="12">refresh(T1)（偷來的）</text>
+  <path class="lnh" d="M336 92 H564"/><polygon points="570,92 561,87 561,97" fill="var(--accent)"/>
+  <text x="450" y="84" text-anchor="middle" font-size="12">發 T2，T1 標記 rotated</text>
+  <path class="ln" d="M96 150 H324"/><polygon points="330,150 321,145 321,155" fill="var(--muted)"/>
+  <text x="210" y="142" text-anchor="middle" font-size="12">refresh(T1)（正常換發）</text>
+  <rect class="b" x="220" y="170" width="220" height="44" rx="8" style="stroke: var(--warn-line); fill: var(--warn-bg);"/>
+  <text x="330" y="188" text-anchor="middle" font-size="12">T1 已 rotated 又被用 →</text>
+  <text x="330" y="204" text-anchor="middle" font-size="12">revokeFamily + CRITICAL 告警</text>
+  <path class="ln" d="M324 240 H96"/><polygon points="90,240 99,235 99,245" fill="var(--muted)"/>
+  <text x="210" y="233" text-anchor="middle" font-size="12">401（T2 也已作廢）</text>
+</svg>
+<figcaption>無論先用的是小偷還是原主人，第二個使用者一出現就會觸發 family 撤銷。</figcaption>
+</figure>
+
+<figure class="code">
+<figcaption>security/src/main/java/com/example/security/auth/service/impl/AuthServiceImpl.java（L142-L199 節錄）</figcaption>
+<pre><code data-lang="java">@Override
+@Transactional(noRollbackFor = UnauthorizedException.class)   // 驗證失敗也要保留撤銷結果
+public TokenPair refresh(String refreshToken, String userAgent, String clientIp) {
+    Instant now = timeProvider.now();
+    RefreshTokenModel current = refreshTokenRepo.findByHashForUpdate(sha256Hex(refreshToken))   // FOR UPDATE
+            .orElseThrow(() -&gt; new UnauthorizedException(INVALID_REFRESH_TOKEN));
+
+    if (!current.isActive()) {
+        if (current.isRotated()) {
+            // 已被換發過的 token 又被拿來用 → 可能外洩，整個 family 作廢
+            refreshTokenRepo.revokeFamily(current.familyTokenId(), RevokedReason.REUSE_DETECTED, now);
+            alertRecorder.record("auth.token_reuse", AlertSeverity.CRITICAL,
+                    "refresh token reuse detected for user " + current.userId(),
+                    "auth.token_reuse:user:" + current.userId(), current.userId(),
+                    Map.of("user_agent", String.valueOf(userAgent),
+                           "issued_user_agent", String.valueOf(current.userAgent())),   // 比對是否同一裝置
+                    Duration.ZERO);
+        }
+        throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    }
+    if (current.isExpired(now)) { throw new UnauthorizedException(INVALID_REFRESH_TOKEN); }
+
+    SecurityUser user = userMapper.findById(current.userId());
+    if (user == null || !user.isActive()) {
+        refreshTokenRepo.revokeFamily(current.familyTokenId(), RevokedReason.USER_INACTIVE, now);
+        throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    }
+    if (!user.tokenVersion().equals(current.issuedTokenVersion())) {
+        refreshTokenRepo.revokeFamily(current.familyTokenId(), RevokedReason.TOKEN_VERSION_CHANGED, now);
+        throw new UnauthorizedException(INVALID_REFRESH_TOKEN);
+    }
+
+    // 先寫入新 token，舊 token 的 replaced_token_id 外鍵才指得到
+    Issued next = issue(user, current.familyTokenId(), current.tokenId(), userAgent);
+    refreshTokenRepo.markRotated(current.id(), next.tokenId(), now);
+    return next.pair();
+}</code></pre>
+</figure>
+<ul>
+<li><strong><code>noRollbackFor = UnauthorizedException</code></strong>：一般交易遇到例外會 rollback，但這裡「撤銷 family」正是在丟 401 之前做的——rollback 掉就白撤銷了。這行註解值一個版本號。</li>
+<li><strong><code>FOR UPDATE</code> 行鎖</strong>：兩個請求同時拿同一份 token 來換發時，序列化處理——第二個會看到第一個改完的狀態（rotated），正確觸發重用偵測，而不是兩個都成功。</li>
+<li>撤銷原因（<code>RevokedReason</code>）記在資料列上：<code>REUSE_DETECTED</code> / <code>USER_INACTIVE</code> / <code>TOKEN_VERSION_CHANGED</code> / <code>LOGOUT</code>，查案時一眼看懂。</li>
+<li>重用偵測同時寫一筆 <strong>CRITICAL 告警</strong>（<code>auth.token_reuse</code>），detail 帶上這次請求和當初簽發的 UA，可比對是否同一裝置。</li>
+</ul>
+</section>
+
+<section id="ch8">
+<h2><span class="no">8</span>業務模組的分層（user）</h2>
+<p><code>user</code> 模組是業務模組的樣板：使用者 / 角色 / 權限 / 個人資料四個子領域，每個都採同一套「讀寫分離」分層。</p>
+
+<figure class="diagram">
+<svg viewBox="0 0 640 260" role="img" aria-label="CQRS 分層圖">
+  <rect class="bh" x="230" y="16" width="180" height="40" rx="8"/><text x="320" y="41" text-anchor="middle" font-size="14">Controller</text>
+  <text x="130" y="80" text-anchor="middle" font-size="13" font-weight="600">讀（Query）</text>
+  <text x="500" y="80" text-anchor="middle" font-size="13" font-weight="600">寫（Command）</text>
+  <rect class="b" x="40" y="96" width="180" height="40" rx="8"/><text x="130" y="114" text-anchor="middle" font-size="13" class="m">UserQueryMapper</text><text x="130" y="129" text-anchor="middle" font-size="11" class="mut">SQL → ReadModel</text>
+  <rect class="b" x="410" y="96" width="180" height="40" rx="8"/><text x="500" y="114" text-anchor="middle" font-size="13" class="m">UserCommand</text><text x="500" y="129" text-anchor="middle" font-size="11" class="mut">交易、@ActivityLog、權限規則</text>
+  <rect class="b" x="410" y="156" width="180" height="36" rx="8"/><text x="500" y="179" text-anchor="middle" font-size="13" class="m">UserService</text>
+  <rect class="b" x="410" y="212" width="180" height="36" rx="8"/><text x="500" y="235" text-anchor="middle" font-size="13" class="m">UserRepo → UserMapper</text>
+  <path class="ln" d="M280 56 C230 70 160 80 135 92"/><polygon points="130,96 139,93 134,85" fill="var(--muted)"/>
+  <text x="185" y="72" font-size="11" class="mut">直連，不經 Command</text>
+  <path class="ln" d="M360 56 C410 70 470 80 496 92"/><polygon points="500,96 491,94 496,86" fill="var(--muted)"/>
+  <path class="ln" d="M500 136 V150"/><polygon points="500,156 495,148 505,148" fill="var(--muted)"/>
+  <path class="ln" d="M500 192 V206"/><polygon points="500,212 495,204 505,204" fill="var(--muted)"/>
+  <text x="130" y="170" text-anchor="middle" font-size="11.5" class="mut">讀取端只產 ReadModel</text>
+  <text x="130" y="186" text-anchor="middle" font-size="11.5" class="mut">絕不做寫入</text>
+</svg>
+<figcaption>讀：Controller 直連 QueryMapper。寫：Command（用例）→ Service（可共用邏輯）→ Repo（持久化）→ Mapper。</figcaption>
+</figure>
+
+<div class="why">讀和寫的需求天生不對稱。讀取常要 JOIN、分頁、關鍵字搜尋，產物是給前端看的扁平資料——讓 Controller 直接呼叫 QueryMapper 拿 ReadModel，中間塞一層「只是轉手」的 service 沒有價值。寫入則相反：要交易、要行鎖、要稽核、要權限規則，值得完整的 Command → Service → Repo 三層。各層職責：<strong>Command</strong> 管用例（交易邊界、@ActivityLog、業務規則）；<strong>Service</strong> 放可共用的領域邏輯（<code>lockExisting</code>、<code>checkUnique</code>）；<strong>Repo</strong> 包住 mapper 並把 <code>DuplicateKeyException</code> 轉成 <code>ConflictException</code>。</div>
+
+<figure class="code">
+<figcaption>user/src/main/java/com/example/user/user/controller/UserController.java（L44-L70 節錄）</figcaption>
+<pre><code data-lang="java">@PreAuthorize("hasAuthority('user:read')")
+@GetMapping
+public PageCommonResponse&lt;UserResponse&gt; list(
+        @RequestParam(name = "page_num", defaultValue = "1") @Min(1) int pageNum,
+        @RequestParam(name = "page_size", defaultValue = "20") @Min(1) @Max(100) int pageSize,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) @Pattern(regexp = "active|disabled") String status) {
+    return PageCommonResponse.query(pageNum, pageSize,
+            () -&gt; userQueryMapper.count(keyword, status),                       // 讀：直連 query mapper
+            (offset, limit) -&gt; userQueryMapper.list(keyword, status, offset, limit)
+                    .stream().map(UserResponse::from).toList());
+}
+
+@PreAuthorize("hasAuthority('user:write')")
+@PostMapping
+public CommonResponse&lt;UserDetailResponse&gt; create(@Valid @RequestBody CreateUserRequest request) {
+    long id = userCommand.create(request.username(), request.email(), request.password(), request.roleIds());
+    return CommonResponse.success(detail(id));   // 寫完用讀取端撈明細回傳，Command 只回 id
+}</code></pre>
+</figure>
+
+<h3>一個寫入用例的完整要素</h3>
+<figure class="code">
+<figcaption>user/src/main/java/com/example/user/user/command/impl/UserCommandImpl.java（L82-L102）</figcaption>
+<pre><code data-lang="java">@Override
+@Transactional
+@ActivityLog(module = MODULE, action = "user.disable", targetType = TARGET)   // 操作稽核
+public void disable(long id) {
+    ActivityLogContext.setTargetId(id);
+    if (PrincipalUtil.isSelf(id)) {                               // ① 不能停用自己
+        throw new BadRequestException("cannot_disable_self");
+    }
+    UserModel user = userService.lockExisting(id);                // ② SELECT ... FOR UPDATE
+    checkCanManage(id, "disable");                                // ③ 只有 admin 能動 admin
+    if (UserStatus.DISABLED.equals(user.status())) {
+        return;                                                   // ④ 冪等：已停用就不重做
+    }
+    userRepo.updateStatus(id, UserStatus.DISABLED);
+    authService.logoutAll(id);                                    // ⑤ 跨模組：token_version+1、撤銷
+                                                                  //    全部 refresh token、清快取
+    log.atInfo().addKeyValue("user_id", id).addKeyValue("username", user.username())
+            .log("user '{}' disabled, all sessions logged out", user.username());
+}</code></pre>
+</figure>
+<ul>
+<li><strong>行鎖先行</strong>（②）：先 <code>FOR UPDATE</code> 鎖住再檢查、再改，兩個管理員同時操作同一人時序列化。</li>
+<li><strong>停用必須立即生效</strong>（⑤）：光改 status 不夠——對方手上的 access token 還有 15 分鐘壽命。呼叫 security 模組的 <code>logoutAll</code> 把 <code>token_version + 1</code>，配合第 6 章的驗證鏈，下一個請求就被拒。模組依賴是單向的：user → security，反過來沒有。</li>
+<li><strong>快取失效的範圍對應影響面</strong>：改單一使用者 → <code>principalCache.evict(id)</code>；改角色的權限（影響很多人）→ <code>RoleCommandImpl</code> 用 <code>evictAll()</code>。</li>
+<li><code>@ActivityLog</code> 掛在 Command 方法上（不是 controller），和 <code>@Transactional</code> 同進退，記「誰、對誰、做了什麼」。</li>
+</ul>
+</section>
+
+<section id="ch9">
+<h2><span class="no">9</span>指標管線</h2>
+<p>本章是整個專案最「自己造」的部分：不用 Prometheus，指標從 Micrometer 一路走到 PostgreSQL、告警、圖表，全部在 app 裡完成。管線全貌：</p>
+<div class="flow">
+  <div class="step"><b>Micrometer 量測</b><small>http.server.requests、app.sql、auth.login.failure、JVM、連線池……</small></div>
+  <div class="arrow">↓ <span>ConfiguredMeterFilter 過濾（deny 前綴、去 tag、限 tag 基數）</span></div>
+  <div class="step hi"><b>DatabaseMeterRegistry（StepMeterRegistry）</b><small>每 10 秒把這段期間的「增量」轉成一批 MetricSample</small></div>
+  <div class="arrow">↓ <span>同一批資料、兩個去向</span></div>
+  <div class="step"><b>① MetricsStore → PostgreSQL</b><small>metrics / metrics_series / metrics_sample（§9.2）</small>　<b>② StepListener → 內存告警</b><small>ThresholdAlertEvaluator（§9.4）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>每 15 分鐘 Maintenance</b><small>彙總進小時表、刪過期原始資料（§9.3）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>/metrics-ui</b><small>總覽 + 指標瀏覽，SVG 自繪圖表（§9.5）</small></div>
+</div>
+
+<h3 id="ch9-collect">9.1 收集：每 10 秒一批增量</h3>
+<div class="why">選 <code>StepMeterRegistry</code> 當基底是關鍵決定：它把「算增量」這件麻煩事全包了——每個 step（10 秒）結束時，counter / timer 讀到的就是<em>這 10 秒內</em>的增量，不是累計值。寫進 DB 的每筆 sample 天然就是「這 10 秒發生了多少」，查詢端不用再做差分。</div>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/store/DatabaseMeterRegistry.java（L91-L123）</figcaption>
+<pre><code data-lang="java">@Override
+protected void publish() {   // StepMeterRegistry 每個 step 呼叫一次（獨立執行緒）
+    List&lt;MetricSample&gt; samples = new ArrayList&lt;&gt;();
+    for (Meter meter : getMeters()) {
+        meter.use(
+                gauge -&gt; addGauge(samples, gauge),
+                counter -&gt; addCounter(samples, counter),
+                timer -&gt; addTimer(samples, timer),
+                /* summary、timeGauge、functionCounter… */
+                other -&gt; { });
+    }
+    if (samples.isEmpty()) {
+        return;
+    }
+    Instant recordedAt = Instant.ofEpochMilli(config().clock().wallTime());
+    try {
+        store.save(samples, recordedAt);                       // 去向①：寫 DB
+    } catch (RuntimeException e) {
+        log.atWarn().setCause(e).addKeyValue("samples", samples.size())
+                .log("metrics store write failed");            // 失敗只記 log，不影響業務
+    }
+    for (StepListener listener : listeners()) {
+        try {
+            listener.onStep(samples, recordedAt);              // 去向②：內存告警（§9.4）
+        } catch (RuntimeException e) {
+            log.atWarn().setCause(e).log("metrics step listener failed");
+        }
+    }
+}</code></pre>
+</figure>
+<ul>
+<li><strong>不寫沒意義的資料</strong>：counter 增量 0、histogram 的 count 0 這個 step 不寫（沒流量就沒有 row）；gauge 一律寫（0 也有意義，例如連線池 pending=0）；NaN / Infinity 跳過。</li>
+<li><strong>DB 寫失敗不影響告警</strong>：兩個去向各自 try/catch——DB 抖一下，告警照常評估，不會「DB 出事時監控剛好失明」。</li>
+<li>timer / summary 這類 histogram 會拆成三筆 sample：<code>count</code>（筆數）、<code>sum</code>（總耗時）、<code>max</code>（最大值）。</li>
+</ul>
+<div class="pitfall">listener 是<strong>延遲解析</strong>的（第一次 publish 才真的去拿）。因為告警 listener 依賴 AlertRecorder → MyBatis mapper → SqlSessionFactory，而 SqlSessionFactory 又為了 SqlLogInterceptor 需要 MeterRegistry——建構時就解析會形成循環依賴，啟動直接失敗。延遲到背景執行緒第一次 publish（context 已 refresh 完）就沒事。</div>
+
+<h3 id="ch9-model">9.2 儲存模型：三層結構</h3>
+<figure class="diagram">
+<svg viewBox="0 0 660 230" role="img" aria-label="指標三層模型">
+  <rect class="b" x="20" y="20" width="230" height="52" rx="8"/>
+  <text x="135" y="42" text-anchor="middle" font-size="13" class="m">metrics</text>
+  <text x="135" y="60" text-anchor="middle" font-size="11.5" class="mut">一個指標一筆：http.server.requests</text>
+  <rect class="b" x="20" y="100" width="300" height="66" rx="8"/>
+  <text x="170" y="122" text-anchor="middle" font-size="13" class="m">metrics_series</text>
+  <text x="170" y="140" text-anchor="middle" font-size="11.5" class="mut">同一指標下每組 tag 組合一筆，attributes 是 JSONB：</text>
+  <text x="170" y="156" text-anchor="middle" font-size="11" class="m mut">{"uri":"/me","status":"200","outcome":"SUCCESS"}</text>
+  <rect class="bh" x="20" y="192" width="420" height="36" rx="8"/>
+  <text x="230" y="215" text-anchor="middle" font-size="12.5"><tspan class="m">metrics_sample</tspan>　(series_id, recorded_at, type, value)</text>
+  <path class="ln" d="M135 72 V94"/><polygon points="135,100 130,92 140,92" fill="var(--muted)"/>
+  <path class="ln" d="M170 166 V186"/><polygon points="170,192 165,184 175,184" fill="var(--muted)"/>
+  <rect class="b" x="420" y="20" width="220" height="146" rx="8" style="stroke-dasharray:5 4;"/>
+  <text x="530" y="44" text-anchor="middle" font-size="12.5" font-weight="600">sample 的 type</text>
+  <text x="438" y="70" font-size="12" class="m">value</text><text x="490" y="70" font-size="11.5" class="mut">gauge / counter 增量</text>
+  <text x="438" y="94" font-size="12" class="m">count</text><text x="490" y="94" font-size="11.5" class="mut">histogram 筆數</text>
+  <text x="438" y="118" font-size="12" class="m">sum</text><text x="490" y="118" font-size="11.5" class="mut">histogram 總和</text>
+  <text x="438" y="142" font-size="12" class="m">max</text><text x="490" y="142" font-size="11.5" class="mut">histogram 最大值</text>
+</svg>
+<figcaption>series 身分 = (metric_id, service, attributes) 唯一鍵；一個 API 會因 status / outcome / exception 不同產生多條 series。</figcaption>
+</figure>
+<ul>
+<li><strong>為什麼拆三層</strong>：sample 是海量的（每 10 秒一批），把指標名和 tag JSON 從每筆 sample 裡抽出去，sample 表每列只剩 <code>(series_id, recorded_at, type, value)</code>，又窄又好建索引。</li>
+<li><strong>JSONB attributes</strong>：tag 組合不定形，用 JSONB 存，查詢用 <code>@&gt;</code> 部分比對（<code>attributes @&gt; '{"outcome":"SERVER_ERROR"}'</code> 命中所有 5xx 的 series，不管 uri 是什麼）。</li>
+<li>寫入端（<code>DatabaseMetricsStore</code>）把 metric 和 series 的 id 快取在內存，穩定狀態下每 10 秒只有一句批次 INSERT sample。</li>
+<li><code>outcome</code> 這個 tag 是 Micrometer 內建的 HTTP 狀態分類：<code>SUCCESS</code>=2xx、<code>CLIENT_ERROR</code>=4xx、<code>SERVER_ERROR</code>=5xx——告警規則比對它就不用列舉每個狀態碼。</li>
+</ul>
+
+<h3 id="ch9-rollup">9.3 降採樣與保留</h3>
+<table>
+<tr><th>資料</th><th>精度</th><th>保留</th><th>彙總方式</th></tr>
+<tr><td><code>metrics_sample</code></td><td>10 秒</td><td>14 天</td><td>—</td></tr>
+<tr><td><code>metrics_sample_hourly</code></td><td>1 小時</td><td>1 年</td><td>count / sum / counter 加總；max 取最大；gauge 取平均</td></tr>
+</table>
+<p><code>MetricsMaintenanceScheduler</code> 每 15 分鐘跑一次，順序是關鍵：<strong>先把完整的小時彙總進小時表，再刪原始資料，而且只刪已彙總過的部分</strong>——彙總失敗這輪就不刪，資料不會掉。彙總寫法可重複執行（idempotent），多跑一次結果相同，所以多台部署也只是多做工不會算錯。</p>
+
+<h3 id="ch9-alert">9.4 內存告警</h3>
+<p>門檻規則寫在 yml（例如「5 分鐘內 5xx 次數 &gt; 0 就 CRITICAL」），但評估<strong>完全不查 DB</strong>：<code>ThresholdAlertEvaluator</code> 實作 <code>StepListener</code>，直接訂閱 §9.1 那批增量——跟寫進 <code>metrics_sample</code> 的是<em>同一批資料、同一個切點</em>，告警和 UI 看到的數字不會分家。</p>
+<div class="why">舊版是每條規則每 10 秒跑一句 aggregate SQL：規則越多 SQL 越多，告警負載跟規則數綁死。改成內存後：穩定狀態整個管線每 10 秒只剩 1 句 SQL（批次 INSERT sample），規則數量跟 SQL 負載完全解耦，告警 INSERT 只在觸發時發生（事件驅動）。代價是重啟後窗口是空的——前一個 window 期間只會<em>少算</em>、不會誤報，可接受。</div>
+
+<p>每條規則維護一個 <code>RuleWindow</code> 滑動窗口。每個 step 把符合規則的 sample 當場聚合成「一格」，評估時把窗口內的格子再聚合：</p>
+<figure class="diagram">
+<svg viewBox="0 0 660 190" role="img" aria-label="RuleWindow 滑動窗口">
+  <path class="ln" d="M30 120 H640"/><polygon points="648,120 639,115 639,125" fill="var(--muted)"/>
+  <text x="640" y="142" text-anchor="end" font-size="11.5" class="mut">時間</text>
+  <rect x="150" y="38" width="420" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="360" y="30" text-anchor="middle" font-size="12.5" style="fill: var(--accent);">window = 5m（now 往回看）</text>
+  <rect class="b" x="60 " y="86" width="36" height="28" rx="6" style="opacity:.45"/><text x="78" y="105" text-anchor="middle" font-size="11" style="opacity:.55">2</text>
+  <rect class="bh" x="190" y="86" width="36" height="28" rx="6"/><text x="208" y="105" text-anchor="middle" font-size="11">1</text>
+  <rect class="bh" x="310" y="86" width="36" height="28" rx="6"/><text x="328" y="105" text-anchor="middle" font-size="11">3</text>
+  <rect class="bh" x="490" y="86" width="36" height="28" rx="6"/><text x="508" y="105" text-anchor="middle" font-size="11">2</text>
+  <text x="78" y="162" text-anchor="middle" font-size="11" class="mut">已滑出：不計</text>
+  <text x="258" y="68" text-anchor="middle" font-size="11" class="mut">沒流量的 step 不佔格子（＝DB 沒有 row）</text>
+  <path class="ln" d="M570 120 V70"/><text x="574" y="64" font-size="11.5">now：sum=6 &gt; above → 觸發</text>
+</svg>
+<figcaption>格子按時間自然滑出，不需要「佔位符」；空的 step 根本不存在，語義與 SQL 的「沒有 row」一致。</figcaption>
+</figure>
+
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/RuleWindow.java（L44-L80 節錄）</figcaption>
+<pre><code data-lang="java">/** 收下一個 step 的增量；沒有符合的 sample 就不占格子（等同 DB 沒有 row） */
+void record(List&lt;MetricSample&gt; samples, Instant recordedAt) {
+    double sum = 0;
+    double max = Double.NEGATIVE_INFINITY;
+    List&lt;Entry&gt; entries = new ArrayList&lt;&gt;();
+    for (MetricSample sample : samples) {
+        if (matches(sample)) {   // metric 名 + sample 欄位相等，tag 包含 match 的所有 key/value
+            sum += sample.value();
+            max = Math.max(max, sample.value());
+            entries.add(new Entry(sample.attributes(), sample.value()));
+        }
+    }
+    if (!entries.isEmpty()) {
+        slots.addLast(new Slot(recordedAt, entries.size(), sum, max, List.copyOf(entries)));
+    }
+}
+
+/** 窗口內的聚合值；完全沒資料回傳 null（與 SQL aggregate 相同） */
+@Nullable
+Double aggregate(Instant now) {
+    evictBefore(now.minus(rule.window()));   // 把滑出窗口的格子丟掉
+    if (slots.isEmpty()) {
+        return null;
+    }
+    int count = 0; double sum = 0; double max = Double.NEGATIVE_INFINITY;
+    for (Slot slot : slots) {
+        count += slot.count(); sum += slot.sum(); max = Math.max(max, slot.max());
+    }
+    return switch (rule.agg()) {
+        case "max" -&gt; max;
+        case "avg" -&gt; sum / count;   // 對實際存在的 sample 取平均，空 step 不拉低平均
+        default -&gt; sum;
+    };
+}</code></pre>
+</figure>
+<p>聚合語義刻意對齊原本的 SQL，兩個細節最容易弄錯：</p>
+<ul>
+<li><strong>沒資料是 <code>null</code> 不是 0</strong>：<code>avg</code> / <code>max</code> 規則在沒資料時不該觸發也不該算成 0；只有 <code>sum</code> 由呼叫端把 null 視為 0（增量語義：沒有 sample = 沒有發生）。</li>
+<li><strong><code>avg</code> 只平均實際存在的 sample</strong>：空 step 不是 0、不參與——否則低流量時平均會被大量「假 0」稀釋。</li>
+</ul>
+
+<p>超標時經過第 2 章的 <code>AlertRecorder</code> 寫入 <code>alerts</code> 表，detail 還帶「哪些 series 貢獻最多」（上線時真的靠它找到是哪支 API 在噴 5xx）：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/ThresholdAlertEvaluator.java（L46-L59）＋ common/alert/mapper/AlertMapper.xml</figcaption>
+<pre><code data-lang="java">private void evaluate(RuleWindow window, Instant now) {
+    AlertRulesProperties.Rule rule = window.rule();
+    Double value = window.aggregate(now);
+    if (value == null &amp;&amp; "sum".equals(rule.agg())) {
+        value = 0.0;   // delta：沒有 sample = 沒有發生
+    }
+    if (value != null &amp;&amp; value &gt; rule.above()) {
+        alertRecorder.record("metrics." + rule.name(), rule.severity(),
+                "alert '%s' firing, %s of %s over %s is %s (threshold %s)".formatted(…),
+                "metrics." + rule.name(), null,
+                detail(rule, value, window.breakdown(now, SERIES_IN_DETAIL)),   // 前 5 大貢獻 series
+                rule.window());   // 抑制間隔 = window：持續超標時 5 分鐘只寫一筆
+    }
+}</code></pre>
+</figure>
+<figure class="code">
+<figcaption>抑制靠 DB 的單一 statement（併發安全，不用先查再寫）</figcaption>
+<pre><code data-lang="sql">INSERT INTO alerts (created_at, alert_type, severity, message, dedup_key, …, detail)
+SELECT #{entry.createdAt}, …, CAST(#{entry.detail} AS JSONB)
+WHERE NOT EXISTS (
+    SELECT 1 FROM alerts
+    WHERE dedup_key = #{entry.dedupKey} AND created_at &gt; #{suppressAfter}
+)</code></pre>
+</figure>
+
+<p>最後一塊是<strong>看門狗</strong>：管線自己停了，上面所有門檻告警會同時失明，所以要「監控監控本身」。</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/alert/StoreStalledChecker.java（L32-L42）</figcaption>
+<pre><code data-lang="java">public void check(Instant now) {
+    Instant lastSavedAt = writeState.lastSavedAt();   // 內存裡的「最後一次成功寫入時間」
+    if (Duration.between(lastSavedAt, now).compareTo(stalledAfter) &lt; 0) {
+        return;
+    }
+    alertRecorder.record(ALERT_TYPE, AlertSeverity.CRITICAL,
+            "alert 'store-stalled' firing, no metrics store writes for " + AlertText.format(stalledAfter),
+            ALERT_TYPE, null,
+            Map.of("stalled", AlertText.format(stalledAfter), "last_saved_at", lastSavedAt.toString()),
+            stalledAfter);
+}</code></pre>
+</figure>
+<ul>
+<li>它跑在<strong>獨立的 @Scheduled 執行緒</strong>上——管線死掉通常代表 registry 的 step 執行緒也死了，不能靠死掉的執行緒發現自己死了。</li>
+<li><code>MetricsWriteState</code> 的初始值是啟動時間，app 剛起來自帶一個 <code>stalledAfter</code>（預設 2 分鐘）的緩衝，不會一開機就誤報。</li>
+<li>app 整個掛掉它也無能為力（它也在 app 裡），那一層要靠外部打 <code>/actuator/health</code>。</li>
+</ul>
+
+<h3 id="ch9-ui">9.5 監控 UI</h3>
+<p><code>/metrics-ui</code> 是一頁自包含的靜態 HTML（跟本教學同一個哲學：不用 CDN，圖表直接畫 SVG），由 metrics 模組的 Controller 從 classpath 讀出來回傳。頁面本身公開，資料 API（<code>/metrics-ui/api/**</code>）要登入——右上角貼 access token。</p>
+<p>查詢端的兩個機制：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/view/MetricsViewService.java（L77-L89）</figcaption>
+<pre><code data-lang="java">/** range 不合法時丟 400；小時表的分桶一定是整數小時 */
+Window parseRange(String range) {
+    Duration span = RANGES.get(range == null || range.isBlank() ? "1h" : range);
+    if (span == null) {
+        throw new BadRequestException("range must be one of 15m, 1h, 6h, 24h, 7d, 14d, 30d, 90d, 1y");
+    }
+    Instant now = timeProvider.now();
+    if (span.compareTo(HOURLY_FROM) &gt;= 0) {   // ≥ 30d 查小時表（原始資料只留 14 天）
+        Duration step = maxDuration(Duration.ofHours(1), Duration.ofHours(span.dividedBy(MAX_POINTS).toHours()));
+        return new Window(SampleSource.HOURLY, now.minus(span), now, step);
+    }
+    Duration step = maxDuration(MIN_STEP, Duration.ofSeconds(span.dividedBy(MAX_POINTS).toSeconds()));
+    return new Window(SampleSource.RAW, now.minus(span), now, step);
+}</code></pre>
+</figure>
+<ul>
+<li><strong>來源切換</strong>：範圍 ≥ 30 天查小時表，其餘查原始表——跟 §9.3 的保留策略互相咬合（14d 範圍貼著原始資料的刪除邊界，最舊的幾桶可能缺資料）。</li>
+<li><strong>分桶</strong>：一張圖最多 240 個點，桶寬 = 範圍 ÷ 240（下限 10 秒）。查 90 天不會傳 77 萬個點給瀏覽器，SQL 端就先 GROUP BY 時間桶。</li>
+</ul>
+</section>
+
+<section id="ch10">
+<h2><span class="no">10</span>背景清理與部署</h2>
+
+<h3>10.1 兩種清理排程的對照</h3>
+<p>專案裡有兩個「刪過期資料」的排程，刻意用了兩種觸發方式，放在一起看很有教學價值：</p>
+<table>
+<tr><th></th><th>clean 模組 RetentionScheduler</th><th>security 模組 RefreshTokenCleanupScheduler</th></tr>
+<tr><td>清什麼</td><td><code>activity_logs</code> / <code>alerts</code> 超過保留期（預設 730 天）</td><td>過期超過 7 天的 refresh token</td></tr>
+<tr><td>觸發</td><td><code>fixedDelay = 24h</code>（啟動後開始算）</td><td><code>cron = "0 0 3 * * *"</code>（UTC 固定凌晨三點）</td></tr>
+<tr><td>共同點</td><td colspan="2">分批刪、可重複執行、單表失敗不影響其他表、多台部署跑多次也只是多做工</td></tr>
+</table>
+<figure class="code">
+<figcaption>clean/src/main/java/com/example/clean/retention/RetentionCleaner.java（L32-L47）＋ RetentionMapper.xml</figcaption>
+<pre><code data-lang="java">private void clean(String table, Instant cutoff, IntUnaryOperator deleteBatch) {
+    try {
+        long total = 0;
+        int deleted;
+        do {
+            deleted = deleteBatch.applyAsInt(BATCH_SIZE);   // 每批 10,000 筆，各自 commit
+            total += deleted;
+        } while (deleted == BATCH_SIZE);                    // 刪不滿一批 = 刪完了
+        if (total &gt; 0) {
+            log.atInfo().addKeyValue("table", table).addKeyValue("deleted", total)
+                    .addKeyValue("cutoff", cutoff).log("retention cleanup done");
+        }
+    } catch (RuntimeException e) {
+        log.atWarn().setCause(e).addKeyValue("table", table).log("retention cleanup failed");
+    }
+}</code></pre>
+</figure>
+<figure class="code">
+<figcaption>對應的 SQL：分批刪避免一次鎖太多列太久</figcaption>
+<pre><code data-lang="sql">DELETE FROM activity_logs
+WHERE id IN (
+    SELECT id FROM activity_logs
+    WHERE created_at &lt; #{before}
+    LIMIT #{limit}
+)</code></pre>
+</figure>
+<p>還有一個設計值得注意：<code>RetentionCleaner</code> 是<strong>純 Java 類，不是 Spring bean</strong>。排程殼（<code>RetentionScheduler</code>）只負責「什麼時候跑」，邏輯全在 cleaner 裡——單元測試 new 一個 cleaner、塞假的 mapper 和固定時間就能測完所有分支，不用起 Spring context。</p>
+
+<h3>10.2 Docker 打包與部署</h3>
+<figure class="code">
+<figcaption>Dockerfile（節錄）</figcaption>
+<pre><code data-lang="docker"># ===== Stage 1: build =====
+FROM maven:3.9-eclipse-temurin-25 AS build
+WORKDIR /workspace
+
+# 1. 先只複製所有 pom.xml，下載依賴（pom 沒變就直接吃 layer cache）
+COPY pom.xml ./
+COPY common/pom.xml common/pom.xml
+COPY security/pom.xml security/pom.xml
+# …每個模組一行
+RUN mvn -q -pl main -am dependency:go-offline -DskipTests
+
+# 2. 再複製原始碼並編譯 jar
+COPY . .
+RUN mvn -q -pl main -am package -DskipTests
+
+# ===== Stage 2: runtime =====
+# JDK 而非 JRE：排查需要 jcmd 與 attach API（diag.sh 的 JVM 指令、Arthas）
+FROM eclipse-temurin:25-jdk
+WORKDIR /app
+RUN groupadd --system spring &amp;&amp; useradd --system --gid spring --create-home spring
+COPY --from=build --chown=spring:spring /workspace/main/target/main-*.jar app.jar
+USER spring
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]</code></pre>
+</figure>
+<ul>
+<li><strong>pom 先行的 layer cache</strong>：依賴下載是最慢的一步，把它跟原始碼分開成兩層——改代碼不改 pom 時，重建直接跳過依賴下載。</li>
+<li><strong>非 root 執行</strong>：建 <code>spring</code> 系統使用者跑 app；<code>exec java</code> 讓 JVM 成為 PID 1，收得到 docker stop 的 SIGTERM，配合 Spring 的 graceful shutdown。</li>
+<li><strong>runtime 用 JDK 不用 JRE</strong>：大一點，換來容器內能用 <code>jcmd</code> 和 attach API 排查（heap dump、Arthas）。</li>
+</ul>
+<p>docker-compose 四個服務用 healthcheck 串依賴：postgres / redis healthy → app 啟動；app 的 healthcheck 用 curl 打 <code>/actuator/health</code>，healthy 之後 nginx 才啟動——冷啟動時不會有流量打到還沒 ready 的 app。<code>./logs</code> 掛載到 <code>/app/logs</code>，所有服務 <code>TZ=UTC</code>。</p>
+
+<h3>10.3 已知限制（誠實清單）</h3>
+<ul>
+<li><strong>只支援單機</strong>：series 沒有 instance id，多台部署時 gauge 會混在一起；告警窗口在各台內存裡各算各的。</li>
+<li><strong>app 無法監控自己的死活</strong>：指標和告警都在 app 裡，app 掛了就全停，要靠外部打 <code>/actuator/health</code>。</li>
+<li><strong>沒有 p95 / p99</strong>：只存 count / sum / max，沒存 histogram bucket。</li>
+<li><strong>排程只考慮單機</strong>：多台時每台都會跑清理與彙總（可重複執行所以結果正確，只是多做工）。</li>
+<li><strong>登入鎖定可被惡意利用</strong>：知道帳號名稱的人可以故意輸錯把對方鎖住（接受此代價換暴力破解防護）。</li>
+<li><strong>預設管理員密碼</strong>所有環境相同，上線後要立刻修改。</li>
+</ul>
+<p>把限制寫清楚跟把功能做出來一樣重要——每一條都是「知道，但現階段不值得」的決定，而不是沒想到。</p>
+</section>
+
+
+</main>
+</div>
+<script>
+// 輕量語法上色：註解 / 字串 / 關鍵字 / 註解(annotation) 四類就夠教學用
+(function () {
+  var KW = {
+    java: /\b(public|private|protected|static|final|class|record|interface|enum|extends|implements|return|new|if|else|for|while|do|switch|case|default|try|catch|finally|throw|throws|void|int|long|double|boolean|var|null|true|false|this|super|import|package|instanceof|yield)\b/g,
+    sql: /\b(SELECT|INSERT|INTO|UPDATE|DELETE|FROM|WHERE|AND|OR|NOT|EXISTS|JOIN|ON|UNION|SET|CASE|WHEN|THEN|ELSE|END|RETURNING|LIMIT|CAST|AS|IN|IS|NULL|ORDER|BY|GROUP|VALUES|CREATE|TABLE|INDEX)\b/gi,
+    yaml: /^(\s*[\w.-]+)(?=:)/gm,
+    docker: /^(FROM|RUN|COPY|WORKDIR|EXPOSE|ENTRYPOINT|USER|ADD|ENV|ARG|CMD)\b/gm
+  };
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  document.querySelectorAll("pre code[data-lang]").forEach(function (el) {
+    var lang = el.dataset.lang, src = el.textContent, out = "", i = 0;
+    // 先切出註解與字串（避免在裡面再上關鍵字色）
+    var pattern = lang === "yaml" || lang === "docker"
+      ? /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")/g
+      : lang === "sql" || lang === "xml"
+        ? /(--[^\n]*|&lt;!--[\s\S]*?--&gt;|<!--[\s\S]*?-->)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")/g
+        : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(@[A-Za-z][\w.]*)/g;
+    src.replace(pattern, function () {
+      var args = Array.prototype.slice.call(arguments);
+      var m = args[0], idx = args[args.length - 2];
+      var com = args[1], str = args[2], ann = args.length > 5 ? args[3] : null;
+      out += kw(src.slice(i, idx));
+      if (com) out += '<span class="tok-com">' + esc(com) + "</span>";
+      else if (str) out += '<span class="tok-str">' + esc(str) + "</span>";
+      else if (ann) out += '<span class="tok-ann">' + esc(ann) + "</span>";
+      i = idx + m.length;
+      return m;
+    });
+    out += kw(src.slice(i));
+    el.innerHTML = out;
+    function kw(text) {
+      var e = esc(text), re = KW[lang];
+      return re ? e.replace(re, function (w) { return '<span class="tok-kw">' + w + "</span>"; }) : e;
+    }
+  });
+
+  // 目錄高亮：滾動時標記目前章節
+  var links = Array.prototype.slice.call(document.querySelectorAll("#toc a"));
+  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  function onScroll() {
+    var y = window.scrollY + 90, current = 0;
+    targets.forEach(function (t, i) { if (t && t.offsetTop <= y) current = i; });
+    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>

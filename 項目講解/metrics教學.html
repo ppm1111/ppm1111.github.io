@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Micrometer 到 DB：指標管線教學</title>
+<style>
+:root {
+  --bg: #faf9f7;
+  --panel: #ffffff;
+  --text: #2b2a27;
+  --muted: #6e6a62;
+  --line: #e3e0da;
+  --accent: #2563eb;
+  --accent-soft: #eff4ff;
+  --code-bg: #f4f2ee;
+  --code-text: #33312d;
+  --kw: #9333ea;
+  --str: #15803d;
+  --com: #8a867c;
+  --ann: #b45309;
+  --box: #f0ede8;
+  --warn-bg: #fff7ed;
+  --warn-line: #fdba74;
+  --ok-bg: #f0fdf4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --panel: #1c1f24;
+    --text: #e4e2dd;
+    --muted: #9b978e;
+    --line: #30343b;
+    --accent: #7ba3f7;
+    --accent-soft: #1f2a42;
+    --code-bg: #14161a;
+    --code-text: #d6d3cc;
+    --kw: #c792ea;
+    --str: #7cc88a;
+    --com: #7b776d;
+    --ann: #e0a458;
+    --box: #23262c;
+    --warn-bg: #2b2117;
+    --warn-line: #8a5a2b;
+    --ok-bg: #16241a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b; --panel: #1c1f24; --text: #e4e2dd; --muted: #9b978e; --line: #30343b;
+  --accent: #7ba3f7; --accent-soft: #1f2a42; --code-bg: #14161a; --code-text: #d6d3cc;
+  --kw: #c792ea; --str: #7cc88a; --com: #7b776d; --ann: #e0a458; --box: #23262c;
+  --warn-bg: #2b2117; --warn-line: #8a5a2b; --ok-bg: #16241a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+  font-size: 16px; line-height: 1.75;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 版面：左目錄右內容 */
+.layout { display: flex; max-width: 1200px; margin: 0 auto; }
+nav {
+  width: 240px; flex: none; position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; overflow-y: auto; padding: 24px 8px 24px 16px;
+  border-right: 1px solid var(--line); font-size: 14px;
+}
+nav .brand { font-weight: 700; font-size: 15px; margin: 0 8px 12px; }
+nav a {
+  display: block; color: var(--muted); padding: 5px 10px; border-radius: 6px;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: var(--text); text-decoration: none; background: var(--box); }
+nav a.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+nav a.sub { padding-left: 24px; font-size: 13px; }
+main { flex: 1; min-width: 0; padding: 32px 40px 120px; }
+@media (max-width: 900px) {
+  .layout { display: block; }
+  nav { position: static; width: auto; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  main { padding: 24px 16px 80px; }
+}
+
+/* 文章元素 */
+h1 { font-size: 30px; line-height: 1.3; margin: 8px 0 4px; }
+h2 {
+  font-size: 23px; margin: 72px 0 12px; padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+h2 .no { color: var(--accent); margin-right: 10px; font-variant-numeric: tabular-nums; }
+h3 { font-size: 18px; margin: 40px 0 8px; }
+p { margin: 10px 0; }
+ul, ol { margin: 8px 0; padding-left: 26px; }
+li { margin: 4px 0; }
+.lead { color: var(--muted); margin-bottom: 32px; }
+strong { font-weight: 650; }
+table { border-collapse: collapse; margin: 14px 0; font-size: 14.5px; width: 100%; }
+th, td { border: 1px solid var(--line); padding: 7px 12px; text-align: left; vertical-align: top; }
+th { background: var(--box); font-weight: 650; }
+
+/* 行內 code 與代碼區塊 */
+code {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.88em; background: var(--code-bg); color: var(--code-text);
+  padding: 1px 6px; border-radius: 5px;
+}
+figure.code { margin: 18px 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+figure.code figcaption {
+  font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px;
+  color: var(--muted); background: var(--box); padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
+}
+figure.code pre {
+  margin: 0; padding: 14px 16px; overflow-x: auto; background: var(--code-bg);
+  font-size: 13.5px; line-height: 1.6;
+}
+figure.code pre code { background: none; padding: 0; font-size: inherit; }
+.tok-kw { color: var(--kw); }
+.tok-str { color: var(--str); }
+.tok-com { color: var(--com); font-style: italic; }
+.tok-ann { color: var(--ann); }
+
+/* 說明框 */
+.note, .why {
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  background: var(--panel); border-radius: 8px; padding: 10px 16px; margin: 16px 0;
+  font-size: 15px;
+}
+.why::before { content: "為什麼這樣設計"; display: block; font-weight: 700; color: var(--accent); font-size: 13.5px; margin-bottom: 4px; }
+.pitfall { border-left-color: var(--warn-line); background: var(--warn-bg); }
+.pitfall::before { content: "踩過的坑"; display: block; font-weight: 700; color: var(--ann); font-size: 13.5px; margin-bottom: 4px; }
+
+/* 流程圖（div 版）：直向堆疊的盒子 + 箭頭 */
+.flow { margin: 18px 0; display: flex; flex-direction: column; align-items: stretch; max-width: 640px; }
+.flow .step {
+  border: 1.5px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 8px 14px; font-size: 14.5px;
+}
+.flow .step b { font-weight: 650; }
+.flow .step small { color: var(--muted); display: block; font-size: 13px; }
+.flow .step.hi { border-color: var(--accent); background: var(--accent-soft); }
+.flow .arrow { align-self: center; color: var(--muted); font-size: 15px; line-height: 1.4; padding: 1px 0; }
+.flow .arrow span { font-size: 12.5px; margin-left: 8px; }
+
+/* SVG 圖 */
+figure.diagram { margin: 20px 0; text-align: center; }
+figure.diagram svg { max-width: 100%; height: auto; }
+figure.diagram figcaption { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+svg text { font-family: "PingFang TC", "Noto Sans TC", system-ui, sans-serif; fill: var(--text); }
+svg text.m { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+svg .b { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; rx: 8; }
+svg .bh { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.5; }
+svg .ln { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+svg .lnh { stroke: var(--accent); stroke-width: 1.8; fill: none; }
+svg .mut { fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav id="toc">
+  <div class="brand">指標管線：從 Micrometer 到 DB</div>
+  <a href="#ch1">1. Micrometer 是什麼</a>
+  <a href="#ch2">2. Meter 的種類</a>
+  <a href="#ch3">3. 誰在量測：meter 哪來的</a>
+  <a href="#ch4">4. MeterFilter：誕生時的關卡</a>
+  <a href="#ch5">5. Step 機制：增量怎麼切</a>
+  <a href="#ch6">6. 執行緒與生命週期</a>
+  <a href="#ch7">7. publish()：轉成 sample</a>
+  <a href="#ch8">8. 寫入 DB 的那一句 SQL</a>
+  <a href="#ch9">9. 隱藏機制總表</a>
+  <a href="#ch10">10. 對照官方 guide</a>
+</nav>
+<main>
+<h1>指標管線：從 Micrometer 到 DB</h1>
+<p class="lead">這份教學只講一件事：<code>counter.increment()</code> 之後到 <code>metrics_sample</code> 多一列之間，發生了什麼。難懂的原因是這條路有一半藏在 Micrometer 庫裡——排程執行緒、增量切割、filter 關卡都不在專案代碼中。本文由下往上，把每一層藏起來的東西攤開，對應 metrics 模組的真實代碼。</p>
+
+<section id="ch1">
+<h2><span class="no">1</span>Micrometer 是什麼</h2>
+<p>Micrometer 之於指標，就像 SLF4J 之於 log：一個<strong>門面（facade）</strong>。業務代碼只對著它的 API 計數，「數字最後去哪」由掛上的 registry 決定——官方有 Prometheus、Datadog 等幾十種 registry，這個專案自己寫了一個把數字送進 PostgreSQL 的。</p>
+<p>整個體系只有三個核心概念：</p>
+<table>
+<tr><th>概念</th><th>是什麼</th><th>例子</th></tr>
+<tr><td><code>Meter</code></td><td>一個量測點。Counter、Timer、Gauge 都是它的子型別</td><td>「app.sql 這個操作的耗時統計」</td></tr>
+<tr><td><code>Meter.Id</code></td><td>meter 的身分 = <strong>名稱 + tag 組合</strong>。tag 不同就是不同的 meter</td><td><code>app.sql{statement=UserMapper.findById}</code> 和 <code>{statement=RoleMapper.list}</code> 是兩個 meter</td></tr>
+<tr><td><code>MeterRegistry</code></td><td>meter 的<strong>工廠 + 容器</strong>：建立 meter、持有所有 meter</td><td>本專案的 <code>DatabaseMeterRegistry</code></td></tr>
+</table>
+<p>看一段專案裡真實的量測代碼（SQL 計時，第 3 章會再出現）：</p>
+<figure class="code">
+<figcaption>common/src/main/java/com/example/common/logging/SqlLogInterceptor.java（節錄）</figcaption>
+<pre><code data-lang="java">Timer.builder("app.sql")                      // ① 名稱
+        .tag("statement", statement)          // ② tag → 跟名稱合成 Meter.Id
+        .register(meterRegistry)              // ③ 跟 registry 要 meter（關鍵的一步）
+        .record(nanos, TimeUnit.NANOSECONDS); // ④ 記一筆：只是改內存裡的數字</code></pre>
+</figure>
+<p>③ 的 <code>register()</code> 是理解一切的起點，它做三件事：</p>
+<div class="flow">
+  <div class="step"><b>查表</b><small>registry 內部有一個 Map&lt;Meter.Id, Meter&gt;。這個 Id 已經存在 → 直接回傳同一個 meter（所以重複 builder 不會重複建）</small></div>
+  <div class="arrow">↓ <span>第一次出現才往下</span></div>
+  <div class="step"><b>過 MeterFilter</b><small>每個「新」meter 誕生前要過關卡：可能被改名、拿掉 tag、甚至整個拒絕（第 4 章）</small></div>
+  <div class="arrow">↓</div>
+  <div class="step"><b>建立並放進 map</b><small>之後這個 meter 一直活在 registry 裡，每 10 秒被 publish 掃一次（第 7 章）</small></div>
+</div>
+<div class="note">所以 ④ <code>record()</code> / <code>increment()</code> 本身<strong>完全不碰 DB、不碰 IO</strong>——只是對內存裡一個原子變數做加法，奈秒級。這是指標系統能放在熱路徑上的原因：量測和輸出是完全分離的兩件事，輸出（每 10 秒一次）在另一條執行緒。</div>
+</section>
+
+<section id="ch2">
+<h2><span class="no">2</span>Meter 的種類</h2>
+<p>不同的量測需求用不同型別，差異在「存了什麼、怎麼結算」：</p>
+<table>
+<tr><th>型別</th><th>語義</th><th>例子</th><th>內部存什麼</th></tr>
+<tr><td><code>Counter</code></td><td>只增不減的計數</td><td><code>auth.login.failure</code>、<code>app.sql.slow</code></td><td>一個累加的 double</td></tr>
+<tr><td><code>Gauge</code></td><td>「當下值」，可升可降；<strong>不是你去 set，而是它去讀</strong>——註冊時給一個函式，取值時才呼叫</td><td><code>jvm.memory.used</code>、<code>hikaricp.connections.active</code></td><td>一個函式參考</td></tr>
+<tr><td><code>Timer</code></td><td>耗時分佈：每 record 一次，同時累積次數、總時間、最大值</td><td><code>http.server.requests</code>、<code>app.sql</code></td><td>count + sum + max</td></tr>
+<tr><td><code>DistributionSummary</code></td><td>跟 Timer 一樣，但量的不是時間（例如 payload bytes）</td><td>—</td><td>count + sum + max</td></tr>
+</table>
+<p>這張表直接決定了資料庫裡的兩個 type 欄位（第一份教學 §9.2 的那張圖）：</p>
+<table>
+<tr><th>Meter 型別</th><th><code>metrics.type</code></th><th>每個 step 產生的 <code>metrics_sample.type</code></th></tr>
+<tr><td>Gauge</td><td><code>gauge</code></td><td><code>value</code> ×1（當下值）</td></tr>
+<tr><td>Counter</td><td><code>sum</code></td><td><code>value</code> ×1（這 10 秒的增量）</td></tr>
+<tr><td>Timer / Summary</td><td><code>histogram</code></td><td><code>count</code> + <code>sum</code> + <code>max</code> ×3（這 10 秒的）</td></tr>
+</table>
+<div class="why">Timer 為什麼拆三筆？因為「平均耗時」不能直接存——不同時間桶的平均數無法再平均。存 count 和 sum，查詢端隨時能算任何範圍的平均（Σsum ÷ Σcount），max 則回答「最糟的那次多慢」。這也是為什麼沒有 p95：percentile 需要存整個分佈（bucket），這裡刻意不存（已知限制）。</div>
+</section>
+<section id="ch3">
+<h2><span class="no">3</span>誰在量測：meter 哪來的</h2>
+<p>metrics UI 上有 69 個指標，但專案裡搜 <code>Counter.builder</code> 只找得到幾個——大多數 meter 是 <strong>Spring Boot 自動綁上來的</strong>。機制：Spring Boot 的 metrics autoconfiguration 會找出 context 裡所有 <code>MeterRegistry</code> bean，把一批「binder」接上去。本專案的 registry bean 就是 <code>DatabaseMeterRegistry</code>（<code>MetricsStoreConfig</code> 裡 <code>@Bean</code>），所以這些自動量測全部流進它：</p>
+<table>
+<tr><th>指標</th><th>誰在量</th><th>怎麼量</th></tr>
+<tr><td><code>http.server.requests</code></td><td>Spring Boot 的 WebMVC 量測 filter</td><td>每個請求結束時 <code>timer.record(耗時)</code>，tag 帶 uri（路由樣板）、method、status、outcome、exception</td></tr>
+<tr><td><code>jvm.*</code>、<code>process.*</code>、<code>system.*</code></td><td>JvmMemoryMetrics 等 binder</td><td>註冊一堆 Gauge，函式直接讀 MXBean</td></tr>
+<tr><td><code>hikaricp.connections.*</code></td><td>HikariCP 自帶的 Micrometer 整合</td><td>Gauge 讀連線池狀態</td></tr>
+<tr><td><code>app.request.slow</code></td><td>專案：RequestLogFilter</td><td>超過門檻的請求 counter +1</td></tr>
+<tr><td><code>app.sql</code> / <code>app.sql.slow</code></td><td>專案：SqlLogInterceptor</td><td>第 1 章那段代碼</td></tr>
+<tr><td><code>auth.login.failure</code> / <code>auth.refresh.failure</code></td><td>專案：AuthServiceImpl</td><td>每種失敗原因（reason tag）counter +1</td></tr>
+<tr><td><code>app.rate_limit.rejected</code></td><td>專案：RateLimitInterceptor</td><td>被擋的請求 counter +1，tag 是規則名</td></tr>
+</table>
+<div class="note">所以「指標在哪裡量」這個問題的答案很分散——這是<em>設計使然</em>：量測代碼就住在它量的東西旁邊（SQL 計時在 SQL 攔截器裡、登入失敗在登入代碼裡），registry 是它們唯一的交會點。而 <code>outcome=SERVER_ERROR</code> 這類 tag 是 Spring Boot 的量測 filter 自己加的（HTTP 狀態分類：2xx=SUCCESS、4xx=CLIENT_ERROR、5xx=SERVER_ERROR），不是專案代碼。</div>
+</section>
+
+<section id="ch4">
+<h2><span class="no">4</span>MeterFilter：誕生時的關卡</h2>
+<p>自動量測有個危險：<strong>你控制不了它產生多少 meter</strong>。每個 uri × method × status 組合都是一個新 meter（新 series），遇到被亂掃的 404 路徑或帶 id 的 uri，meter 數會失控。Micrometer 的解法是 <code>MeterFilter</code>：每個「新」meter 進 registry 前（第 1 章 register 的第二步）要過關：</p>
+<div class="flow">
+  <div class="step"><b>map(id)</b><small>可以改寫 Meter.Id：這裡用來「拿掉不要的 tag」（ignore-tags）</small></div>
+  <div class="arrow">↓ <span>改寫後的 id 再進入</span></div>
+  <div class="step"><b>accept(id)</b><small>回 DENY / NEUTRAL / ACCEPT。DENY 的 meter 會變成 no-op：業務代碼照常 increment，但數字直接丟掉</small></div>
+</div>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/filter/ConfiguredMeterFilter.java（節錄）</figcaption>
+<pre><code data-lang="java">@Override
+public Meter.Id map(Meter.Id id) {
+    Rule rule = rules.get(id.getName());
+    if (rule == null || rule.ignoreTags().isEmpty()) {
+        return id;
+    }
+    List&lt;Tag&gt; kept = id.getTags().stream()
+            .filter(tag -&gt; !rule.ignoreTags().contains(tag.getKey()))
+            .toList();
+    return id.replaceTags(kept);              // 拿掉設定裡 ignore-tags 列的 tag
+}
+
+@Override
+public MeterFilterReply accept(Meter.Id id) {
+    for (String prefix : denyPrefixes) {      // ① 名稱前綴整個排除
+        if (id.getName().startsWith(prefix)) {
+            return MeterFilterReply.DENY;
+        }
+    }
+    Rule rule = rules.get(id.getName());
+    if (rule == null) {
+        return MeterFilterReply.NEUTRAL;
+    }
+    for (Map&lt;String, String&gt; tags : rule.deny()) {          // ② 依 tag 排除
+        if (matchesAll(id, tags)) {                          //    （例：/actuator/health 的請求）
+            return MeterFilterReply.DENY;
+        }
+    }
+    for (Map.Entry&lt;String, Integer&gt; entry : rule.maxTagValues().entrySet()) {
+        if (exceedsMax(id, entry.getKey(), entry.getValue())) {   // ③ tag 值數量上限
+            return MeterFilterReply.DENY;
+        }
+    }
+    return MeterFilterReply.NEUTRAL;
+}</code></pre>
+</figure>
+<ul>
+<li>③ 是防爆炸的最後防線：某個 tag（例如 uri）的<em>不同值</em>超過上限後，<strong>帶新值的 meter 不再建立</strong>（已存在的照常計數），並 WARN 一次。被掃描器亂打一萬個路徑，最多也只產生上限個 series。</li>
+<li>這個 filter 怎麼掛上 registry 的？又是隱藏機制：<code>MetricsFilterConfig</code> 只是把它宣告成 <code>@Bean</code>，<strong>Spring Boot 自動把所有 <code>MeterFilter</code> bean 套用到所有 registry</strong>——專案裡找不到 <code>registry.config().meterFilter(...)</code> 這行，是 Boot 代勞的。</li>
+<li>設定來源是 <code>application.yml</code> 的 <code>app.metrics</code> 段：<code>deny</code> 前綴清單 + 每個指標的 <code>rules</code>（deny / ignore-tags / max-tag-values）。</li>
+</ul>
+</section>
+<section id="ch5">
+<h2><span class="no">5</span>Step 機制：增量怎麼切</h2>
+<p>這是整條管線最「看不見」的一層，也是選 <code>StepMeterRegistry</code> 當基底的原因。先理解問題：</p>
+<div class="why">Counter 天生是<strong>累計值</strong>：開機到現在共 12,345 次。但圖表和告警要的是<strong>增量</strong>：「這 10 秒發生了幾次」。如果存累計值，查詢端得自己對相鄰兩點做差分，還要處理重啟歸零（數字突然掉回 0 會算出負增量）。Prometheus 走的是「存累計、查詢時差分」路線（rate() 函式）；Step 體系走反路線：<strong>在源頭就把時間切成固定的格子（step），每格結束時結算這一格的增量</strong>。存進 DB 的每筆就是乾淨的增量，查詢端零負擔。</div>
+<p>實現手法是<strong>雙槽輪替（rollover）</strong>。每個 step 型 meter 內部有兩個槽：</p>
+<figure class="diagram">
+<svg viewBox="0 0 660 240" role="img" aria-label="step 雙槽輪替">
+  <path class="ln" d="M30 150 H630"/><polygon points="638,150 629,145 629,155" fill="var(--muted)"/>
+  <text x="90" y="174" text-anchor="middle" font-size="11.5" class="m mut">10:00:00</text>
+  <text x="270" y="174" text-anchor="middle" font-size="11.5" class="m mut">10:00:10</text>
+  <text x="450" y="174" text-anchor="middle" font-size="11.5" class="m mut">10:00:20</text>
+  <path class="ln" d="M90 144 V156"/><path class="ln" d="M270 144 V156"/><path class="ln" d="M450 144 V156"/>
+  <rect class="b" x="100" y="40" width="160" height="40" rx="8"/>
+  <text x="180" y="58" text-anchor="middle" font-size="12">current：3 → 5 → 7</text>
+  <text x="180" y="73" text-anchor="middle" font-size="11" class="mut">increment() 都加在這</text>
+  <rect class="bh" x="280" y="40" width="160" height="40" rx="8"/>
+  <text x="360" y="58" text-anchor="middle" font-size="12">current：0 → 2 → …</text>
+  <text x="360" y="73" text-anchor="middle" font-size="11" class="mut">新的一格重新累積</text>
+  <rect class="b" x="280" y="95" width="160" height="36" rx="8" style="stroke-dasharray:5 4;"/>
+  <text x="360" y="112" text-anchor="middle" font-size="12">previous = 7（定格）</text>
+  <text x="360" y="126" text-anchor="middle" font-size="11" class="mut">count() 讀到的是這個</text>
+  <path class="lnh" d="M262 82 C270 90 272 92 280 98"/>
+  <text x="252" y="100" text-anchor="end" font-size="11.5" style="fill: var(--accent);">10:00:10 整點：rollover，current 搬到 previous 歸零</text>
+  <text x="360" y="215" text-anchor="middle" font-size="12">publish() 在 10:00:10 之後呼叫 counter.count() → 拿到 7（上一格的完整增量）</text>
+</svg>
+<figcaption>寫入永遠進 current；讀取永遠讀 previous——一個已經「關帳」的完整 step。</figcaption>
+</figure>
+<ul>
+<li>所以 <code>DatabaseMeterRegistry.publish()</code> 裡的 <code>counter.count()</code>、<code>timer.count()</code> 讀到的<strong>不是累計值，是上一個 step 的增量</strong>——這是最容易誤解的一點，代碼表面看不出來，語義由父類決定。</li>
+<li>rollover 是惰性的：取值時發現「現在已經跨到新的 step 了」才搬槽，不需要額外的執行緒盯著。</li>
+<li>Gauge 不參與這套機制——它沒有累積可言，取值就是當場呼叫那個函式讀當下值。</li>
+<li>step 的長度就是先前追過的那條設定鏈：<code>app.metrics.store.step: 10s</code> → <code>MetricsStoreProperties</code> → 建構子 → <code>StepRegistryConfig.step()</code>。</li>
+</ul>
+</section>
+
+<section id="ch6">
+<h2><span class="no">6</span>執行緒與生命週期</h2>
+<p>「每 10 秒」到底是誰在跑？專案裡沒有任何 <code>@Scheduled</code> 或 Timer 對著 publish——答案在 bean 定義的最後一行：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/store/MetricsStoreConfig.java（L41-L53）</figcaption>
+<pre><code data-lang="java">@Bean(destroyMethod = "close")   // close 會把最後一個 step 也寫出去
+public DatabaseMeterRegistry databaseMeterRegistry(MetricsStoreProperties properties, DatabaseMetricsStore store,
+                                                   MetricsWriteState writeState,
+                                                   ObjectProvider&lt;StepListener&gt; listeners) {
+    MetricsStore tracked = (samples, recordedAt) -&gt; {
+        store.save(samples, recordedAt);
+        writeState.saved(recordedAt);        // 給 store-stalled 看門狗的「最後成功寫入時間」
+    };
+    // listener 延遲解析，見 DatabaseMeterRegistry 的說明（循環依賴）
+    DatabaseMeterRegistry registry = new DatabaseMeterRegistry(properties.step(), tracked, Clock.SYSTEM,
+            () -&gt; listeners.orderedStream().toList());
+    registry.start(new NamedThreadFactory("metrics-store"));   // ← 排程執行緒在這誕生
+    return registry;
+}</code></pre>
+</figure>
+<p><code>registry.start(...)</code> 是 <code>StepMeterRegistry</code>（父類）的方法：起一個單執行緒排程器，每 <code>step()</code> 間隔呼叫一次子類的 <code>publish()</code>。執行緒名叫 <code>metrics-store</code>——thread dump 或 log 裡看到這個名字，就是它。整條管線跑在哪些執行緒上，值得一張總表：</p>
+<table>
+<tr><th>執行緒</th><th>做什麼</th><th>多常</th></tr>
+<tr><td>HTTP worker（Tomcat）</td><td><code>increment()</code> / <code>record()</code>：改內存數字</td><td>每個請求，奈秒級</td></tr>
+<tr><td><code>metrics-store</code></td><td><code>publish()</code>：掃 meter → 寫 DB → 通知告警 listener（RuleWindow 只在這條執行緒上被碰，所以不用鎖）</td><td>每 10 秒</td></tr>
+<tr><td>Spring <code>scheduling</code></td><td><code>StoreStalledChecker</code>（看門狗——metrics-store 執行緒死了只有別條執行緒能發現）；<code>MetricsMaintenance</code>（彙總 + 清理）</td><td>10 秒 / 15 分鐘</td></tr>
+</table>
+<p><strong>生命週期的另一端</strong>是 <code>destroyMethod = "close"</code>：Spring 關 context 時呼叫 registry 的 <code>close()</code>（也是父類的，專案沒覆寫）——停掉排程執行緒、把「最後一個不滿 10 秒的 step」強制結算再 publish 一次。配上 Dockerfile 的 <code>exec java</code>（JVM 是 PID 1，收得到 SIGTERM）和 graceful shutdown，停機前最後幾秒的請求數不會蒸發。</p>
+<div class="pitfall">這個 bean 還埋著本專案踩過最深的坑：<strong>循環依賴</strong>。registry 建構時如果立刻解析 listener，鏈路是 ThresholdAlertEvaluator → AlertRecorder → MyBatis mapper → SqlSessionFactory，而 SqlSessionFactory 又為了 SqlLogInterceptor（它要記 app.sql 指標）需要 MeterRegistry——回到正在建的這個 registry，啟動爆炸。解法是兩處都「延遲解析」：store 的 mapper 用 <code>Supplier</code>（上面 <code>mapper::getObject</code>），listener 清單也用 <code>Supplier</code>，都拖到第一次 publish（metrics-store 執行緒上，context 早已組裝完）才真的去拿。<code>ObjectProvider</code> 就是 Spring 給「先拿著、要用再查」設計的工具。</div>
+</section>
+<section id="ch7">
+<h2><span class="no">7</span>publish()：meter 變成 sample</h2>
+<p>每 10 秒，<code>metrics-store</code> 執行緒呼叫一次這個方法。它是整條管線「從 Micrometer 世界跨進專案世界」的翻譯層：把活的 meter 物件翻成不可變的 <code>MetricSample</code> record，然後送往兩個去向。</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/store/DatabaseMeterRegistry.java（L91-L123）</figcaption>
+<pre><code data-lang="java">@Override
+protected void publish() {
+    List&lt;MetricSample&gt; samples = new ArrayList&lt;&gt;();
+    for (Meter meter : getMeters()) {        // registry 容器裡的所有 meter
+        meter.use(                           // 依型別分發（visitor 模式）
+                gauge -&gt; addGauge(samples, gauge),
+                counter -&gt; addCounter(samples, counter),
+                timer -&gt; addTimer(samples, timer),
+                summary -&gt; addSummary(samples, summary),
+                longTaskTimer -&gt; addLongTaskTimer(samples, longTaskTimer),
+                timeGauge -&gt; addTimeGauge(samples, timeGauge),
+                functionCounter -&gt; addFunctionCounter(samples, functionCounter),
+                functionTimer -&gt; addFunctionTimer(samples, functionTimer),
+                other -&gt; { });
+    }
+    if (samples.isEmpty()) {
+        return;
+    }
+    Instant recordedAt = Instant.ofEpochMilli(config().clock().wallTime());
+    try {
+        store.save(samples, recordedAt);                 // 去向①：DB（第 8 章）
+    } catch (RuntimeException e) {
+        log.atWarn().setCause(e).addKeyValue("samples", samples.size())
+                .log("metrics store write failed");       // 失敗只記 log，10 秒後再來
+    }
+    for (StepListener listener : listeners()) {
+        try {
+            listener.onStep(samples, recordedAt);        // 去向②：內存告警
+        } catch (RuntimeException e) {
+            log.atWarn().setCause(e).log("metrics step listener failed");
+        }
+    }
+}</code></pre>
+</figure>
+<p><code>meter.use(...)</code> 是 Micrometer 的型別分發（八個 lambda 對應八種 meter 型別，比 instanceof 鏈乾淨）。各型別的轉換規則：</p>
+<table>
+<tr><th>型別</th><th>轉成</th><th>不寫的情況（省掉無意義的 row）</th></tr>
+<tr><td>Gauge / TimeGauge</td><td><code>value</code> ×1：當下值</td><td>NaN / Infinity（gauge 的函式可能讀到無效狀態）；<strong>0 照寫</strong>——「連線池 pending=0」是有意義的資訊</td></tr>
+<tr><td>Counter / FunctionCounter</td><td><code>value</code> ×1：這 step 的增量（第 5 章）</td><td>增量 0：這 10 秒沒發生就沒有 row</td></tr>
+<tr><td>Timer / Summary / LongTaskTimer</td><td><code>count</code> + <code>sum</code> + <code>max</code> ×3</td><td>count 0：沒流量的操作不佔三列</td></tr>
+</table>
+<ul>
+<li><strong>兩個去向各自 try/catch</strong>：DB 壞掉不影響告警評估（告警反而更該活著）、某個 listener 丟例外不影響 DB 寫入和其他 listener。</li>
+<li><code>recordedAt</code> 取自 registry 的 <code>Clock</code>——跟 step 切割用同一個時間來源，整批 samples 共用同一個時間戳：這就是「告警和 UI 看同一個切點」的保證。</li>
+<li>時間單位：<code>getBaseTimeUnit()</code> 回 <code>MILLISECONDS</code>，所以 timer 的 sum/max 存進 DB 的單位是毫秒（<code>metrics.unit = milliseconds</code>）。</li>
+</ul>
+</section>
+
+<section id="ch8">
+<h2><span class="no">8</span>寫入 DB 的那一句 SQL</h2>
+<p>去向①的終點是 <code>DatabaseMetricsStore</code>。它要解決的問題：sample 帶的是「名稱 + tag map」，但 DB 要的是 <code>series_id</code>（三層模型）。每批幾百筆 sample，不能每筆都去查 id——所以 id 查一次就<strong>快取在內存</strong>：</p>
+<figure class="code">
+<figcaption>metrics/src/main/java/com/example/metrics/store/DatabaseMetricsStore.java（節錄）</figcaption>
+<pre><code data-lang="java">private final Map&lt;String, Long&gt; metricIds = new ConcurrentHashMap&lt;&gt;();
+private final Map&lt;String, Long&gt; seriesIds = new ConcurrentHashMap&lt;&gt;();   // "&lt;metricId&gt;|&lt;attributes json&gt;"
+
+@Override
+public void save(List&lt;MetricSample&gt; samples, Instant recordedAt) {
+    MetricsStoreMapper mapper = mapperSupplier.get();        // 延遲解析（同第 6 章的循環依賴）
+    List&lt;MetricsStoreMapper.SampleRow&gt; rows = new ArrayList&lt;&gt;(samples.size());
+    for (MetricSample sample : samples) {
+        long metricId = metricId(mapper, sample);            // 快取命中 → 0 SQL
+        long seriesId = seriesId(mapper, metricId, normalize(sample.attributes()));
+        rows.add(new MetricsStoreMapper.SampleRow(seriesId, sample.sampleType(), sample.value()));
+    }
+    mapper.insertSamples(rows, recordedAt);                  // 整批一句 INSERT
+}
+
+private String normalize(Map&lt;String, String&gt; attributes) {
+    // TreeMap = 依 key 排序後序列化：{"a":1,"b":2} 和 {"b":2,"a":1} 必須是同一條 series
+    return jsonMapper.writeValueAsString(new TreeMap&lt;&gt;(attributes == null ? Map.of() : attributes));
+}</code></pre>
+</figure>
+<ul>
+<li><strong>穩定狀態 = 每 10 秒 1 句 SQL</strong>。所有 metric / series 的 id 都已在快取裡，剩下的只有那句批次 <code>insertSamples</code>。只有「第一次出現的 meter」才會多兩句 INSERT + SELECT 登記。</li>
+<li>登記用 <code>INSERT ... ON CONFLICT DO NOTHING</code> 再 SELECT——多台 instance（或重啟後快取清空）同時登記同一個 series 也不會撞唯一鍵。</li>
+<li><code>normalize</code> 的 TreeMap 排序是容易忽略的關鍵：tag map 的序列化順序若不固定，同一組 tag 會被登記成多條 series，圖上同一條線裂成好幾條。</li>
+<li>寫完順手更新 <code>MetricsWriteState.saved(recordedAt)</code>（第 6 章 bean 定義裡那個 lambda 包裝）——這個 volatile 時間戳就是 store-stalled 看門狗盯的對象。</li>
+</ul>
+</section>
+<section id="ch9">
+<h2><span class="no">9</span>隱藏機制總表</h2>
+<p>回頭整理「代碼裡看不到、但確實在發生」的每一件事。讀 metrics 模組時疑惑「這誰做的？」，先查這張表：</p>
+<table>
+<tr><th>看不見的事</th><th>誰做的</th><th>在哪一層</th></tr>
+<tr><td>每 10 秒呼叫 publish() 的排程執行緒</td><td><code>StepMeterRegistry.start()</code>——<code>MetricsStoreConfig:52</code> 那行 <code>registry.start(new NamedThreadFactory("metrics-store"))</code></td><td>Micrometer 庫</td></tr>
+<tr><td>counter.count() 讀到的是「上一個 step 的增量」不是累計值</td><td>step meter 的雙槽 rollover（第 5 章）</td><td>Micrometer 庫</td></tr>
+<tr><td>停機時最後一批指標被寫出去</td><td><code>@Bean(destroyMethod = "close")</code> → 父類 <code>close()</code>：停執行緒 + 最後一次 publish</td><td>Spring 生命週期 + Micrometer 庫</td></tr>
+<tr><td>http.server.requests、jvm.*、hikaricp.* 這些沒人寫的指標</td><td>Spring Boot metrics autoconfiguration 把 binder 綁上所有 MeterRegistry bean</td><td>Spring Boot</td></tr>
+<tr><td>ConfiguredMeterFilter 被套用到 registry</td><td>Spring Boot 自動收集所有 <code>MeterFilter</code> bean 套用</td><td>Spring Boot</td></tr>
+<tr><td>outcome=SERVER_ERROR 這個 tag</td><td>Spring Boot 的 WebMVC 量測 filter 依狀態碼分類加的</td><td>Spring Boot</td></tr>
+<tr><td>listener 清單的內容</td><td><code>ObjectProvider&lt;StepListener&gt;.orderedStream()</code> 在執行期撈容器裡所有實作 bean（目前只有 ThresholdAlertEvaluator）</td><td>Spring 容器</td></tr>
+<tr><td>mapper / listener 建構時拿不到、第一次用才出現</td><td>兩處 <code>Supplier</code> 延遲解析，解 SqlLogInterceptor 引起的循環依賴</td><td>專案代碼（刻意）</td></tr>
+<tr><td>telemetry 的「10 秒」</td><td><code>app.metrics.store.step</code> → Properties → 建構子 → <code>StepRegistryConfig.step()</code></td><td>設定鏈</td></tr>
+</table>
+<p>把這張表跟全專案教學的 §9 對起來看：專案代碼真正負責的只有「翻譯」（meter → sample）、「儲存」（三層模型 + id 快取）、「告警」（RuleWindow）三塊，其餘的重活——量測、過濾掛載、切增量、排程、優雅收尾——全部外包給 Micrometer 和 Spring Boot。</p>
+</section>
+
+<section id="ch10">
+<h2><span class="no">10</span>對照官方 guide：自己寫一個 MeterRegistry</h2>
+<p>Micrometer 官方的 custom meter registry 指南（docs.micrometer.io → guides → Implementing a Custom Meter Registry）教的路線跟本專案一模一樣，對照著看就能驗證你理解了每一塊：</p>
+<table>
+<tr><th>官方 guide 的步驟</th><th>本專案對應</th></tr>
+<tr><td>繼承 <code>StepMeterRegistry</code>（推薦給「定期推送」型的 registry）</td><td><code>DatabaseMeterRegistry extends StepMeterRegistry</code></td></tr>
+<tr><td>提供一個 <code>StepRegistryConfig</code>（prefix / get / step）</td><td>建構子裡那個匿名類：<code>get()</code> 回 null（設定全走 Spring）、<code>step()</code> 回 yml 的 10s</td></tr>
+<tr><td>實作 <code>publish()</code>：遍歷 <code>getMeters()</code>，把數值送去後端</td><td>第 7 章整段；官方範例送 HTTP，這裡送 PostgreSQL + 內存告警</td></tr>
+<tr><td>實作 <code>getBaseTimeUnit()</code>：timer 的輸出單位</td><td>回 <code>MILLISECONDS</code></td></tr>
+<tr><td><code>start(ThreadFactory)</code> 啟動推送執行緒</td><td><code>MetricsStoreConfig</code> bean 方法最後一行</td></tr>
+<tr><td>結束時 <code>close()</code></td><td><code>@Bean(destroyMethod = "close")</code></td></tr>
+</table>
+<p>也就是說，一個「最小可用」的自製 registry 只需要這些：</p>
+<figure class="code">
+<figcaption>最小示意（教學用，非專案代碼）</figcaption>
+<pre><code data-lang="java">public class PrintingMeterRegistry extends StepMeterRegistry {
+
+    public PrintingMeterRegistry(Duration step) {
+        super(new StepRegistryConfig() {
+            public String prefix() { return "printing"; }
+            public String get(String key) { return null; }
+            public Duration step() { return step; }
+        }, Clock.SYSTEM);
+    }
+
+    @Override
+    protected void publish() {   // 每 step 被父類的執行緒呼叫
+        for (Meter meter : getMeters()) {
+            System.out.println(meter.getId() + " = " + meter.measure());
+        }
+    }
+
+    @Override
+    protected TimeUnit getBaseTimeUnit() { return TimeUnit.MILLISECONDS; }
+}
+
+// 用法：
+// var registry = new PrintingMeterRegistry(Duration.ofSeconds(10));
+// registry.start(new NamedThreadFactory("printing"));
+// Counter.builder("demo").register(registry).increment();
+// → 10 秒後 console 印出 demo 的增量</code></pre>
+</figure>
+<p>從這個 20 行的玩具到本專案的差距，就是前面八章講的每一層：filter 防爆炸、型別分發與「不寫無意義 row」的規則、三層模型與 id 快取、雙去向的錯誤隔離、延遲解析解循環、destroyMethod 收尾。基底是官方給的，價值在這些層的取捨。</p>
+</section>
+
+</main>
+</div>
+<script>
+// 輕量語法上色：註解 / 字串 / 關鍵字 / 註解(annotation) 四類就夠教學用
+(function () {
+  var KW = {
+    java: /\b(public|private|protected|static|final|class|record|interface|enum|extends|implements|return|new|if|else|for|while|do|switch|case|default|try|catch|finally|throw|throws|void|int|long|double|boolean|var|null|true|false|this|super|import|package|instanceof|yield)\b/g,
+    sql: /\b(SELECT|INSERT|INTO|UPDATE|DELETE|FROM|WHERE|AND|OR|NOT|EXISTS|JOIN|ON|UNION|SET|CASE|WHEN|THEN|ELSE|END|RETURNING|LIMIT|CAST|AS|IN|IS|NULL|ORDER|BY|GROUP|VALUES|CREATE|TABLE|INDEX)\b/gi,
+    yaml: /^(\s*[\w.-]+)(?=:)/gm,
+    docker: /^(FROM|RUN|COPY|WORKDIR|EXPOSE|ENTRYPOINT|USER|ADD|ENV|ARG|CMD)\b/gm
+  };
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  document.querySelectorAll("pre code[data-lang]").forEach(function (el) {
+    var lang = el.dataset.lang, src = el.textContent, out = "", i = 0;
+    // 先切出註解與字串（避免在裡面再上關鍵字色）
+    var pattern = lang === "yaml" || lang === "docker"
+      ? /(#[^\n]*)|("(?:[^"\\\n]|\\.)*")/g
+      : lang === "sql" || lang === "xml"
+        ? /(--[^\n]*|&lt;!--[\s\S]*?--&gt;|<!--[\s\S]*?-->)|('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")/g
+        : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*")|(@[A-Za-z][\w.]*)/g;
+    src.replace(pattern, function () {
+      var args = Array.prototype.slice.call(arguments);
+      var m = args[0], idx = args[args.length - 2];
+      var com = args[1], str = args[2], ann = args.length > 5 ? args[3] : null;
+      out += kw(src.slice(i, idx));
+      if (com) out += '<span class="tok-com">' + esc(com) + "</span>";
+      else if (str) out += '<span class="tok-str">' + esc(str) + "</span>";
+      else if (ann) out += '<span class="tok-ann">' + esc(ann) + "</span>";
+      i = idx + m.length;
+      return m;
+    });
+    out += kw(src.slice(i));
+    el.innerHTML = out;
+    function kw(text) {
+      var e = esc(text), re = KW[lang];
+      return re ? e.replace(re, function (w) { return '<span class="tok-kw">' + w + "</span>"; }) : e;
+    }
+  });
+
+  // 目錄高亮：滾動時標記目前章節
+  var links = Array.prototype.slice.call(document.querySelectorAll("#toc a"));
+  var targets = links.map(function (a) { return document.querySelector(a.getAttribute("href")); });
+  function onScroll() {
+    var y = window.scrollY + 90, current = 0;
+    targets.forEach(function (t, i) { if (t && t.offsetTop <= y) current = i; });
+    links.forEach(function (a, i) { a.classList.toggle("active", i === current); });
+  }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
+</body>
+</html>
