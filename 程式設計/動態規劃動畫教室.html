@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<script data-wiki-auth>(function(){var ok=false;try{ok=sessionStorage.getItem('wiki-auth')==='590c783dce35634a13f99f7b25482678536c9a39cf153f1bb83554aa0362e5d1'}catch(e){}if(!ok){document.documentElement.className+=' locked';document.documentElement.style.display='none';location.replace('../index.html?next='+encodeURIComponent(location.href));}})();</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>動態規劃動畫教室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 耐心的家教，清楚、具體，每一步都說出「為什麼」
+   IDEA: 演算法課上的方格紙筆記本 + 正在跑的除錯器
+   PICTURE: 會動的遞迴樹與 DP 表格，格子一格一格被填滿
+   COLOUR and TYPE: 白底、藍色主色、朱紅標目前格、琥珀色是呼叫棧、紫色是備忘錄命中；Noto Sans TC + JetBrains Mono
+   LAYOUT: 藍色頁首帶分頁 → 每題：題意、拆解、動畫(左) + 程式碼(右)、易錯點 */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#111318);--ink:light-dark(#15171c,#e8e9ed);--mut:light-dark(#5b606d,#9da2ae);
+--line:light-dark(#e2e4ea,#2a2e38);--panel:light-dark(#f4f5f8,#191c23);
+--hd:light-dark(#1f4fd1,#152763);--blue:light-dark(#1f4fd1,#86a6ff);--blueT:light-dark(#e2e9fc,#1d2a4f);
+--red:light-dark(#e1412f,#ff7a68);--redT:light-dark(#fde6e2,#4a1f1a);
+--amb:light-dark(#c98a12,#e7ae3c);--ambT:light-dark(#fff0cc,#3b2f13);
+--vio:light-dark(#6d4fd0,#ae98f5);--vioT:light-dark(#ece6fb,#2c2450);
+--codebg:light-dark(#f6f7fa,#161920)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 "Noto Sans TC",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(28px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+pre,.scroll{overflow-x:auto}code{overflow-wrap:anywhere;font-family:"JetBrains Mono",monospace;font-size:.9em;background:var(--panel);padding:1px 5px;border-radius:4px}
+html{scroll-padding-top:72px}
+header{background:var(--hd);color:#fff;padding:clamp(24px,3.4vw,44px) max(5vw,16px) 0}
+header h1{font-size:clamp(30px,4.6vw,50px);line-height:1.08;margin:0 0 10px;font-weight:900;text-wrap:balance}
+header p{margin:0 0 22px;max-width:64ch;opacity:.88;font-size:17px}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+nav a{color:#fff;text-decoration:none;padding:10px 16px;border-radius:10px 10px 0 0;font-weight:500;font-size:15px;min-height:44px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1)}
+nav a:hover{background:rgba(255,255,255,.2)}
+nav a[aria-current=page]{background:var(--bg);color:var(--ink)}
+nav small{font-size:12px;opacity:.75}
+section.pg{display:none}section.pg.on{display:block}
+h2{font-size:clamp(26px,3vw,36px);line-height:1.12;margin:0 0 6px;text-wrap:balance}
+h3{font-size:20px;margin:34px 0 10px}
+.lead{color:var(--mut);max-width:70ch;margin:0 0 22px;font-size:17px}
+.tag{display:inline-block;font-size:13px;padding:2px 10px;border-radius:99px;background:var(--panel);color:var(--mut);margin-right:6px;font-weight:500}
+.tag.h{background:var(--redT);color:var(--red)}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;margin:6px 0 24px}
+.card{background:var(--panel);border-radius:12px;padding:16px 18px}
+.card h4{margin:0 0 4px;font-size:15px;color:var(--blue)}
+.card p{margin:0;font-size:15.5px}
+.key{border-left:3px solid var(--red);padding:4px 0 4px 16px;margin:18px 0;max-width:75ch}
+ul.tips{padding-left:20px;max-width:75ch}ul.tips li{margin:6px 0}
+/* player */
+.pl{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start;margin:10px 0 8px}
+@media(max-width:920px){.pl{grid-template-columns:minmax(0,1fr)}}
+.pl-main{border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--bg)}
+.stage{min-height:260px}
+.msg{min-height:3.3em;margin:12px 0 10px;padding:10px 14px;border-radius:10px;background:var(--panel);font-size:16px}
+.msg b{color:var(--red)}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.b{font:inherit;font-size:15px;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.b:hover{border-color:var(--blue)}
+.b.pri{background:var(--blue);border-color:var(--blue);color:light-dark(#fff,#0e1530);font-weight:700;min-width:80px}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.scrub{flex:1 1 140px;accent-color:var(--blue);height:44px}
+.cnt{font:13px "JetBrains Mono",monospace;color:var(--mut);white-space:nowrap}
+.spd{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--mut)}.spd input{width:84px;accent-color:var(--blue)}
+.pl-code{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--codebg)}
+@media(min-width:921px){.pl-code{position:sticky;top:12px}}
+.seg{display:flex;border-bottom:1px solid var(--line)}
+.seg button{flex:1;font:inherit;font-size:14.5px;min-height:44px;border:0;background:transparent;color:var(--mut);cursor:pointer;border-bottom:3px solid transparent}
+.seg button[aria-pressed=true]{color:var(--ink);font-weight:700;border-bottom-color:var(--blue)}
+pre.code{margin:0;padding:12px 0;font:13.5px/1.7 "JetBrains Mono",monospace}
+.ln{display:block;padding:0 14px;white-space:pre;border-left:3px solid transparent}
+.ln.on{background:var(--redT);border-left-color:var(--red)}
+.ln i{font-style:normal;color:var(--mut)}.ln b{color:var(--blue);font-weight:600}.ln u{text-decoration:none;color:var(--vio)}
+/* inputs */
+form.in{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:4px 0 14px}
+form.in label{display:flex;flex-direction:column;font-size:14px;color:var(--mut);gap:4px}
+form.in input,form.in select{font:16px "JetBrains Mono",monospace;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:min(220px,100%)}
+form.in .err{color:var(--red);font-size:14px;flex-basis:100%}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--mut);margin:0 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:16px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+.lg-cur{outline:2px solid var(--red);background:var(--redT)!important}.lg-src{background:var(--blue)!important}.lg-st{background:var(--ambT)!important}.lg-dn{background:var(--blueT)!important}.lg-hit{background:var(--vioT)!important;border:2px dashed var(--vio)!important}
+/* dp table */
+table.dp{border-collapse:separate;border-spacing:3px;font:14px "JetBrains Mono",monospace;margin:0 auto}
+table.dp th{color:var(--mut);font-weight:600;padding:2px 6px;font-size:13px;white-space:nowrap}
+table.dp td{width:36px;height:34px;text-align:center;border-radius:6px;background:var(--panel);transition:background .25s;font-weight:600;padding:0 2px}
+table.dp td.na{background:transparent}
+table.dp td.s1{background:var(--ambT);color:var(--amb)}
+table.dp td.s2{background:var(--blueT)}
+table.dp td.src{background:var(--blue);color:light-dark(#fff,#0e1530)}
+table.dp td.hit{background:var(--vioT);outline:2px dashed var(--vio);color:var(--vio)}
+table.dp td.path{outline:2px solid var(--red);color:var(--red)}
+table.dp td.cur{outline:3px solid var(--red);background:var(--redT);color:var(--red)}
+.sv{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:14px;align-items:start}
+@media(max-width:600px){.sv{grid-template-columns:minmax(0,1fr)}}
+.stack{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:13px "JetBrains Mono",monospace}
+.stack h4{margin:0 0 6px;font:600 13px "Noto Sans TC",sans-serif;color:var(--amb)}
+.stack ol{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+.stack li{padding:4px 8px;border-radius:6px;background:var(--ambT);margin-bottom:3px;white-space:nowrap}
+.stack li.top{outline:2px solid var(--red)}
+.mut{color:var(--mut);margin:0;font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;font-size:14px;color:var(--mut);align-items:center}
+.chip{font:600 14px "JetBrains Mono",monospace;padding:3px 10px;border-radius:99px;background:var(--panel);color:var(--ink)}
+/* tree */
+.tree svg{width:100%;height:auto;display:block}
+.ed{stroke:var(--line);stroke-width:2}
+.nd rect{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.nd text{font:600 12.5px "JetBrains Mono",monospace;fill:var(--ink);text-anchor:middle}
+.n1 rect{fill:var(--ambT);stroke:var(--amb)}
+.n2 rect{fill:var(--blueT);stroke:var(--blue)}
+.n3 rect{fill:var(--vioT);stroke:var(--vio);stroke-dasharray:4 3;stroke-width:2}.n3 text{fill:var(--vio)}
+.nd.cur rect{stroke:var(--red);stroke-width:3}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.stat{background:var(--panel);border-radius:10px;padding:8px 14px;font-size:14px;color:var(--mut)}
+.stat b{font:700 22px "JetBrains Mono",monospace;color:var(--ink);margin-right:4px}
+.mrow{display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-top:10px;font:13px "JetBrains Mono",monospace}
+.mrow>span:first-child{color:var(--mut);margin-right:6px}
+.mc{display:flex;flex-direction:column;align-items:center;min-width:38px;padding:3px 4px;border-radius:6px;background:var(--panel)}
+.mc small{color:var(--mut);font-size:11px}.mc.f{background:var(--blueT)}.mc.h{background:var(--vioT);outline:2px dashed var(--vio)}
+/* balloons */
+.bal{display:flex;justify-content:center;gap:clamp(4px,1.4vw,12px);flex-wrap:wrap;margin:6px 0 4px}
+.bl{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--mut)}
+.bl div{width:clamp(36px,7vw,52px);height:clamp(36px,7vw,52px);border-radius:50% 50% 46% 46%;display:grid;place-items:center;font:700 17px "JetBrains Mono",monospace;background:var(--panel);color:var(--ink);border:2px solid var(--line);transition:all .25s}
+.bl.pad div{border-style:dashed;opacity:.7}
+.bl.in div{background:var(--blueT)}
+.bl.L div{background:var(--ambT);border-color:var(--amb)}
+.bl.R div{background:var(--vioT);border-color:var(--vio)}
+.bl.k div{background:var(--red);border-color:var(--red);color:#fff;transform:translateY(-6px)}
+.bl.wall div{border:3px solid var(--ink)}
+.eq{text-align:center;font:14px/1.6 "JetBrains Mono",monospace;margin:8px 0 12px;min-height:1.6em}
+.eq b{color:var(--red);font-size:17px}
+.cmp{width:100%;border-collapse:collapse;max-width:900px;font-size:15px}
+.cmp th,.cmp td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.cmp th{font-size:14px;color:var(--mut);font-weight:500}
+ol.steps{max-width:75ch;padding-left:22px}ol.steps li{margin:8px 0}
+.more{display:flex;flex-wrap:wrap;gap:8px}.more a{color:var(--blue);background:var(--panel);padding:8px 14px;border-radius:10px;text-decoration:none;font-size:15px}
+footer{color:var(--mut);font-size:14px;border-top:1px solid var(--line)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:600px){table.dp td{width:28px;height:30px;font-size:12.5px}table.dp{border-spacing:2px}.cmp{font-size:13.5px}.cmp th,.cmp td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>動態規劃，用眼睛看懂</h1>
+    <p>從「暴力遞迴＋備忘錄」出發，一步一步看記憶化搜索怎麼把指數時間變成多項式時間，再用四道 LeetCode 經典題練到熟。每個動畫都能暫停、倒帶、改輸入。</p>
+    <nav aria-label="章節">
+      <a href="#intro">核心觀念</a>
+      <a href="#lc416">416 分割等和子集 <small>0/1 背包</small></a>
+      <a href="#lc322">322 零錢兌換 <small>完全背包</small></a>
+      <a href="#lc1143">1143 最長公共子序列 <small>雙序列</small></a>
+      <a href="#lc312">312 戳氣球 <small>區間 DP</small></a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<!-- ============ INTRO ============ -->
+<section class="pg band" id="intro"><div class="wrap">
+  <h2>記憶化搜索 ＝ 暴力遞迴 ＋ 一本備忘錄</h2>
+  <p class="lead">先用最小的例子：費氏數列 <code>fib(n) = fib(n-1) + fib(n-2)</code>。按播放，看暴力遞迴怎麼一遍又一遍重算同一個子問題，再切到「記憶化」，看整棵子樹被剪掉。</p>
+  <form class="in" id="f-fib"><label>n（3–7）<select name="n"><option>4</option><option>5</option><option selected>6</option><option>7</option></select></label></form>
+  <div class="legend"><span><i class="lg-st"></i>在呼叫棧中（計算中）</span><span><i class="lg-dn"></i>已算完</span><span><i class="lg-hit"></i>備忘錄命中，直接回傳</span><span><i class="lg-cur"></i>這一步</span></div>
+  <div id="p-fib"></div>
+
+  <div class="key"><b>重點：</b>暴力遞迴的呼叫次數約是 1.6ⁿ（指數），但不同的子問題只有 n+1 個。把每個子問題的答案記下來，第二次遇到就直接查——這就是記憶化搜索，也就是「自頂向下」的動態規劃。</div>
+
+  <h3>什麼題目可以用 DP？</h3>
+  <div class="cols">
+    <div class="card"><h4>問法</h4><p>求「最大／最小」、「能不能」、「有幾種方法」，而且每做一個選擇，剩下的問題和原題長得一樣、只是更小。</p></div>
+    <div class="card"><h4>重疊子問題</h4><p>同一個小問題會被不同路徑反覆問到（像 fib(3) 被算了很多次）。這是加備忘錄有用的原因。</p></div>
+    <div class="card"><h4>最優子結構 / 無後效性</h4><p>大問題的答案只取決於小問題的「答案」，而不取決於你是怎麼走到那個小問題的。</p></div>
+  </div>
+
+  <h3>每一題都套這四步</h3>
+  <ol class="steps">
+    <li><b>定義狀態：</b>用一句中文說清楚 <code>dfs(i, j)</code> 代表什麼，例如「前 i 個數能不能湊出 j」。說不清楚，後面一定寫錯。</li>
+    <li><b>寫轉移：</b>想「最後一步」做了什麼選擇（選或不選、用哪枚硬幣、最後戳哪顆氣球），每種選擇都變成一個更小的狀態。</li>
+    <li><b>定邊界：</b>最小的狀態直接回傳答案，例如 <code>i == 0</code>、金額為 0。</li>
+    <li><b>加備忘錄：</b>在 Python 加上 <code>@cache</code>（<code>from functools import cache</code>），就是記憶化搜索。之後把遞迴「翻過來」由小到大填表，就是遞推。</li>
+  </ol>
+
+  <h3>自頂向下 vs 自底向上</h3>
+  <div class="scroll"><table class="cmp">
+    <thead><tr><th></th><th>記憶化搜索（自頂向下）</th><th>遞推填表（自底向上）</th></tr></thead>
+    <tbody>
+      <tr><th>怎麼寫</th><td>遞迴函式 + 快取，幾乎就是把轉移式直接翻成程式</td><td>迴圈填 dp 陣列，要自己想好填表順序</td></tr>
+      <tr><th>計算順序</th><td>需要誰就去算誰，系統自動處理順序</td><td>必須保證算 dp[i][j] 時，它依賴的格子都已填好</td></tr>
+      <tr><th>算多少狀態</th><td>只算「真的用得到」的狀態（後面動畫會看到很多格子是空的）</td><td>整張表全部填滿</td></tr>
+      <tr><th>代價</th><td>遞迴深度可能很深；函式呼叫有額外開銷</td><td>常數小，容易做空間壓縮（二維變一維）</td></tr>
+      <tr><th>建議</th><td>面試時先寫這個，正確率最高</td><td>想優化空間或遞迴太深時再改</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>接下來</h3>
+  <p class="lead" style="margin-bottom:10px">依序點上方四題。每題都可切換「記憶化搜索 / 遞推」兩種寫法，比較兩者填表的差別。做完後推薦再練：</p>
+  <div class="more">
+    <a href="https://leetcode.com/problems/house-robber/">198 打家劫舍</a>
+    <a href="https://leetcode.com/problems/target-sum/">494 目標和</a>
+    <a href="https://leetcode.com/problems/coin-change-ii/">518 零錢兌換 II</a>
+    <a href="https://leetcode.com/problems/longest-increasing-subsequence/">300 最長遞增子序列</a>
+    <a href="https://leetcode.com/problems/edit-distance/">72 編輯距離</a>
+    <a href="https://leetcode.com/problems/longest-palindromic-subsequence/">516 最長回文子序列</a>
+    <a href="https://leetcode.com/problems/minimum-score-triangulation-of-polygon/">1039 多邊形三角剖分</a>
+  </div>
+</div></section>
+
+<!-- ============ 416 ============ -->
+<section class="pg band" id="lc416"><div class="wrap">
+  <span class="tag">Medium</span><span class="tag">0/1 背包</span>
+  <h2>416. 分割等和子集</h2>
+  <p class="lead">給一個正整數陣列，能不能把它分成兩組，讓兩組的總和相等？</p>
+  <div class="cols">
+    <div class="card"><h4>轉換</h4><p>兩組相等 ⇔ 能挑出一些數，總和剛好是 <code>sum / 2</code>。每個數只能「選或不選」→ 0/1 背包。</p></div>
+    <div class="card"><h4>狀態</h4><p><code>dfs(i, j)</code>：只用前 i 個數，能不能剛好湊出 j。</p></div>
+    <div class="card"><h4>轉移</h4><p>看第 i 個數 x：不選 → <code>dfs(i-1, j)</code>；選（需 j ≥ x）→ <code>dfs(i-1, j-x)</code>。兩者有一個成立就成立。</p></div>
+    <div class="card"><h4>邊界與複雜度</h4><p><code>dfs(0, j)</code> 只有 j = 0 為真。時間 O(n·t)，空間 O(n·t)，可壓到 O(t)。</p></div>
+  </div>
+  <form class="in" id="f416"><label>nums<input name="a" value="1,5,11,5"></label><button class="b">套用</button><span class="err"></span></form>
+  <div class="legend"><span><i class="lg-cur"></i>目前格</span><span><i class="lg-src"></i>依賴的子問題</span><span><i class="lg-st"></i>在呼叫棧中</span><span><i class="lg-dn"></i>已存入</span><span><i class="lg-hit"></i>備忘錄命中</span></div>
+  <div id="p416"></div>
+  <h3>易錯點</h3>
+  <ul class="tips">
+    <li>總和是奇數直接回傳 False，不用算。</li>
+    <li>壓成一維 <code>dp[j]</code> 時，j 必須<b>由大到小</b>倒著跑：否則 <code>dp[j-x]</code> 已經是「這一輪」更新過的值，同一個數會被選兩次（那就變成完全背包了）。</li>
+    <li>切到「記憶化搜索」看看：有不少格子從頭到尾都是空的——因為 <code>or</code> 短路，有些狀態根本不需要算。</li>
+  </ul>
+</div></section>
+
+<!-- ============ 322 ============ -->
+<section class="pg band" id="lc322"><div class="wrap">
+  <span class="tag">Medium</span><span class="tag">完全背包</span>
+  <h2>322. 零錢兌換</h2>
+  <p class="lead">給幾種硬幣面額（每種無限多枚）和一個金額，求湊出金額最少需要幾枚硬幣；湊不出來回傳 -1。這題最適合看清楚記憶化搜索的「呼叫棧」與「備忘錄」如何互動。</p>
+  <div class="cols">
+    <div class="card"><h4>狀態</h4><p><code>dfs(x)</code>：湊出金額 x 最少要幾枚。</p></div>
+    <div class="card"><h4>轉移</h4><p>最後一枚用的是哪種硬幣 c？<code>dfs(x) = min(dfs(x - c) + 1)</code>，對每個 c 取最小。</p></div>
+    <div class="card"><h4>邊界</h4><p><code>dfs(0) = 0</code>；x &lt; 0 表示此路不通，回傳 ∞。</p></div>
+    <div class="card"><h4>複雜度</h4><p>狀態 amount+1 個，每個試 k 種硬幣：時間 O(amount·k)，空間 O(amount)。</p></div>
+  </div>
+  <form class="in" id="f322"><label>coins<input name="c" value="1,2,5"></label><label>amount（≤ 30）<input name="m" value="11"></label><button class="b">套用</button><span class="err"></span></form>
+  <div class="legend"><span><i class="lg-cur"></i>目前格</span><span><i class="lg-src"></i>依賴的子問題</span><span><i class="lg-st"></i>在呼叫棧中</span><span><i class="lg-dn"></i>已存入</span><span><i class="lg-hit"></i>備忘錄命中</span></div>
+  <div id="p322"></div>
+  <div class="key"><b>觀察：</b>記憶化模式下，第一次會一路「鑽到底」<code>dfs(11) → dfs(10) → … → dfs(0)</code>，呼叫棧疊得很高；之後回溯時，幾乎每次呼叫都是紫色的備忘錄命中，一步就回來。</div>
+  <h3>易錯點</h3>
+  <ul class="tips">
+    <li>不能用貪心（每次拿最大面額）：例如 coins = 1,3,4、amount = 6，貪心得 4+1+1 = 3 枚，正解是 3+3 = 2 枚。可以把這組輸入貼上去試試。</li>
+    <li>初始值要用 ∞ 而不是 0 或 -1，最後再把 ∞ 轉成 -1。</li>
+    <li>完全背包的一維遞推，內層金額要<b>由小到大</b>正著跑——和 416 剛好相反，因為同一種硬幣可以重複使用。</li>
+  </ul>
+</div></section>
+
+<!-- ============ 1143 ============ -->
+<section class="pg band" id="lc1143"><div class="wrap">
+  <span class="tag">Medium</span><span class="tag">雙序列 DP</span>
+  <h2>1143. 最長公共子序列</h2>
+  <p class="lead">給兩個字串，求它們最長的公共子序列長度。子序列不必連續，但要保持原本的先後順序。例如 "ace" 是 "abcde" 的子序列。</p>
+  <div class="cols">
+    <div class="card"><h4>狀態</h4><p><code>dfs(i, j)</code>：s 的前 i 個字元和 t 的前 j 個字元，LCS 長度是多少。</p></div>
+    <div class="card"><h4>轉移</h4><p>看最後一個字元：相同 → <code>dfs(i-1, j-1) + 1</code>（對角線）；不同 → <code>max(dfs(i-1, j), dfs(i, j-1))</code>（上、左）。</p></div>
+    <div class="card"><h4>邊界</h4><p>任一字串為空，LCS 為 0：<code>i == 0 or j == 0</code>。</p></div>
+    <div class="card"><h4>複雜度</h4><p>時間與空間 O(n·m)，空間可壓到 O(m)。</p></div>
+  </div>
+  <form class="in" id="f1143"><label>s（≤ 9 字元）<input name="s" value="abcbdab"></label><label>t（≤ 9 字元）<input name="t" value="bdcaba"></label><button class="b">套用</button><span class="err"></span></form>
+  <div class="legend"><span><i class="lg-cur"></i>目前格</span><span><i class="lg-src"></i>依賴的子問題</span><span><i class="lg-st"></i>在呼叫棧中</span><span><i class="lg-dn"></i>已存入</span><span><i class="lg-hit"></i>備忘錄命中</span><span><i style="outline:2px solid var(--red)"></i>回溯路徑</span></div>
+  <div id="p1143"></div>
+  <div class="key"><b>動畫最後的紅框：</b>表格填完後，從右下角往回走——字元相同就走對角線並記下該字元，否則往值比較大的方向走，就能還原出一個實際的 LCS 字串。</div>
+  <h3>易錯點</h3>
+  <ul class="tips">
+    <li>dp 多開一行一列代表「空字串」，所以比較字元時是 <code>s[i-1]</code>、<code>t[j-1]</code>，下標很容易差一。</li>
+    <li>和「最長公共子字串」不同：子字串要求連續，字元不同時要歸 0，而不是取 max。</li>
+    <li>同一個模板可以直接用在 <a href="https://leetcode.com/problems/edit-distance/">72 編輯距離</a>：只是轉移變成三個方向取 min。</li>
+  </ul>
+</div></section>
+
+<!-- ============ 312 ============ -->
+<section class="pg band" id="lc312"><div class="wrap">
+  <span class="tag h">Hard</span><span class="tag">區間 DP</span>
+  <h2>312. 戳氣球</h2>
+  <p class="lead">一排氣球各有數字。戳破第 i 顆得到 <code>左鄰 × 自己 × 右鄰</code> 分（超出邊界當作 1），戳破後左右兩顆變成相鄰。求戳完全部氣球的最大總分。</p>
+  <div class="cols">
+    <div class="card"><h4>難點</h4><p>如果枚舉「先戳哪顆」，戳完後左右會黏在一起，兩邊的子問題互相影響，無法拆開。</p></div>
+    <div class="card"><h4>逆向思考</h4><p>改成枚舉區間內「<b>最後</b>戳破」的氣球 k。k 活到最後，它就像一道牆把左右隔開，兩邊變成獨立子問題，而且戳 k 時它的鄰居一定是區間兩端 i、j。</p></div>
+    <div class="card"><h4>狀態與轉移</h4><p>兩端補 1 得 v。<code>dfs(i, j)</code>：戳完開區間 (i, j) 內所有氣球的最大分。<code>max over k: dfs(i,k) + v[i]·v[k]·v[j] + dfs(k,j)</code></p></div>
+    <div class="card"><h4>邊界與複雜度</h4><p>i + 1 ≥ j 時區間內沒氣球，得 0。狀態 O(n²)，每個枚舉 O(n) 個 k：時間 O(n³)。</p></div>
+  </div>
+  <form class="in" id="f312"><label>nums（≤ 6 個）<input name="a" value="3,1,5,8"></label><button class="b">套用</button><span class="err"></span></form>
+  <div class="legend"><span><i style="background:var(--red)"></i>k：最後戳破</span><span><i class="lg-st"></i>左半 (i, k)</span><span><i style="background:var(--vioT)"></i>右半 (k, j)</span><span><i style="border:3px solid var(--ink)"></i>區間端點 i、j</span><span><i class="lg-src"></i>表格中依賴的格子</span></div>
+  <div id="p312"></div>
+  <h3>易錯點</h3>
+  <ul class="tips">
+    <li>遞推時一定要<b>按區間長度由短到長</b>填表（不是按 i、j 的順序），因為 dp[i][j] 依賴的 dp[i][k]、dp[k][j] 都是更短的區間。記憶化搜索則不用煩惱順序。</li>
+    <li>開區間的定義讓 v[i]、v[j] 在 (i, j) 內的氣球全戳完之前都還在，乘積才會正確。</li>
+    <li>相同套路的題：<a href="https://leetcode.com/problems/minimum-score-triangulation-of-polygon/">1039</a>、<a href="https://leetcode.com/problems/minimum-cost-to-cut-a-stick/">1547 切棍子的最小成本</a>。</li>
+  </ul>
+</div></section>
+</main>
+<footer class="band"><div class="wrap">提示：在動畫區可用鍵盤 ← → 逐步、空白鍵播放／暫停。程式碼為 Python 3。</div></footer>
+
+<script>
+{
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const F=v=>v===Infinity?'∞':v;
+const g2=(R,C,v)=>Array.from({length:R},()=>Array(C).fill(v));
+const c2=a=>a.map(r=>r.slice());
+const KW=/\b(def|return|if|else|for|in|range|or|and|not|max|min|inf|True|False|len|sum|from|import)\b/g;
+function hl(l){const i=l.indexOf('#');const a=i<0?l:l.slice(0,i),c=i<0?'':l.slice(i);
+  return esc(a).replace(KW,'<b>$1</b>').replace(/@cache/,'<u>@cache</u>')+(c?'<i>'+esc(c)+'</i>':'');}
+
+class Player{
+  constructor(root,o){
+    Object.assign(this,{root,o,i:0,t:null,mode:o.modes[0].id,frames:[]});
+    root.className='pl';
+    root.innerHTML=`<div class="pl-main"><div class="stage"></div><p class="msg" aria-live="polite"></p>
+    <div class="ctrl"><button class="b" data-a="reset">重來</button><button class="b" data-a="prev">上一步</button><button class="b pri" data-a="play">播放</button><button class="b" data-a="next">下一步</button>
+    <input class="scrub" type="range" min="0" value="0" aria-label="進度"><span class="cnt"></span>
+    <label class="spd">速度<input type="range" min="1" max="5" value="3"></label></div></div>
+    <div class="pl-code">${o.modes.length>1?`<div class="seg">${o.modes.map(m=>`<button data-m="${m.id}">${m.label}</button>`).join('')}</div>`:''}<pre class="code"></pre></div>`;
+    const q=s=>root.querySelector(s);
+    this.stage=q('.stage');this.msg=q('.msg');this.scrub=q('.scrub');this.cnt=q('.cnt');this.spdI=q('.spd input');this.pb=q('[data-a=play]');this.code=q('.code');
+    root.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+      if(b.dataset.a)this[b.dataset.a]();
+      if(b.dataset.m){this.mode=b.dataset.m;this.rebuild();}});
+    this.scrub.addEventListener('input',()=>{this.stop();this.i=+this.scrub.value;this.show();});
+    this.spdI.addEventListener('input',()=>{if(this.t){this.stop();this.play();}});
+  }
+  rebuild(){this.stop();this.frames=this.o.build(this.mode);this.i=0;this.scrub.max=this.frames.length-1;
+    const m=this.o.modes.find(x=>x.id===this.mode);
+    this.code.innerHTML=m.code.map((l,k)=>`<span class="ln" data-k="${k}">${hl(l)||' '}</span>`).join('');
+    this.root.querySelectorAll('[data-m]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===this.mode));
+    this.show();}
+  show(){const f=this.frames[this.i];this.o.render(this.stage,f,this);this.msg.innerHTML=f.msg||'';
+    const L=[].concat(f.line??[]);this.code.querySelectorAll('.ln').forEach(s=>s.classList.toggle('on',L.includes(+s.dataset.k)));
+    this.scrub.value=this.i;this.cnt.textContent=`${this.i+1} / ${this.frames.length}`;}
+  next(){if(this.i<this.frames.length-1){this.i++;this.show();}if(this.i>=this.frames.length-1)this.stop();}
+  prev(){this.stop();if(this.i>0){this.i--;this.show();}}
+  reset(){this.stop();this.i=0;this.show();}
+  play(){if(this.t){this.stop();return;}if(this.i>=this.frames.length-1){this.i=0;this.show();}
+    const d=[1300,800,480,240,90][this.spdI.value-1];this.t=setInterval(()=>this.next(),d);this.pb.textContent='暫停';}
+  stop(){clearInterval(this.t);this.t=null;this.pb.textContent='播放';}
+}
+
+class Tr{constructor(R,C,sf=s=>s){this.val=g2(R,C,null);this.st=g2(R,C,0);this.stack=[];this.F=[];this.sf=sf;this.n=0;}
+  snap(o){this.F.push({val:c2(this.val),st:c2(this.st),stack:this.stack.map(this.sf),...o});}}
+
+function gridHTML(f,{rl,cl,fmt,mask,corner=''}){
+  const key=a=>a?a[0]+','+a[1]:'';const cur=key(f.cur),hit=key(f.hit),src=new Set((f.src||[]).map(key)),path=new Set(f.path||[]);
+  let h=`<div class="scroll"><table class="dp"><thead><tr><th>${corner}</th>${cl.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+  f.val.forEach((row,r)=>{h+=`<tr><th>${rl[r]}</th>`;row.forEach((v,c)=>{
+    if(mask&&!mask(r,c)){h+='<td class="na"></td>';return;}
+    const k=r+','+c;let cls='s'+f.st[r][c];if(src.has(k))cls+=' src';if(path.has(k))cls+=' path';if(k===hit)cls+=' hit';if(k===cur)cls+=' cur';
+    h+=`<td class="${cls}">${v==null?'':fmt(v)}</td>`;});h+='</tr>';});
+  return h+'</tbody></table></div>';
+}
+const stackHTML=s=>`<div class="stack"><h4>呼叫棧（上方為最新）</h4>${s.length?`<ol>${s.slice().reverse().map((x,i)=>`<li class="${i?'':'top'}">${esc(x)}</li>`).join('')}</ol>`:'<p class="mut">（空）</p>'}</div>`;
+const side=(f,td,grid)=>td?`<div class="sv"><div>${grid}</div>${stackHTML(f.stack)}</div>`:grid;
+const parseNums=s=>s.split(/[,\s，]+/).filter(Boolean).map(Number);
+
+/* ---------- Fibonacci ---------- */
+const P={};let fibN=6;
+const FIBCODE=['from functools import cache','','@cache            # 拿掉這行就是暴力遞迴','def fib(n):','    if n <= 1:    # 邊界','        return n','    return fib(n - 1) + fib(n - 2)'];
+function buildFib(memoOn){
+  const n=fibN,nodes=[],ev=[],memo={};
+  (function rec(k,d,p){const nd={id:nodes.length,k,d,p,kids:[]};nodes.push(nd);if(p)p.kids.push(nd);ev.push(['in',nd]);
+    if(k<=1){nd.v=k;ev.push(['base',nd]);return k;}
+    if(memoOn&&k in memo){nd.v=memo[k];ev.push(['hit',nd]);return nd.v;}
+    nd.v=rec(k-1,d+1,nd)+rec(k-2,d+1,nd);if(memoOn)memo[k]=nd.v;ev.push(['ret',nd]);return nd.v;})(n,0,null);
+  let lf=0,md=0;(function lay(nd){md=Math.max(md,nd.d);if(!nd.kids.length)nd.x=lf++;else{nd.kids.forEach(lay);nd.x=(nd.kids[0].x+nd.kids.at(-1).x)/2;}})(nodes[0]);
+  const T={nodes,lf,md,memoOn,n},st=Array(nodes.length).fill(0),mem=Array(n+1).fill(0);let calls=0,hits=0;
+  const fr=[{T,st:st.slice(),mem:mem.slice(),calls,hits,cur:-1,line:[],msg:memoOn?`記憶化模式：算完的 fib(k) 會寫進備忘錄，再遇到就直接查。按「播放」。`:`暴力模式：每次呼叫都老老實實往下遞迴。按「播放」看 fib(${n}) 展開成多大的樹。`}];
+  for(const[t,nd]of ev){let msg,line;
+    if(t==='in'){calls++;st[nd.id]=1;msg=`呼叫 <b>fib(${nd.k})</b>`;line=3;}
+    else if(t==='base'){st[nd.id]=2;msg=`fib(${nd.k}) 是邊界，直接回傳 ${nd.k}`;line=[4,5];}
+    else if(t==='hit'){hits++;st[nd.id]=3;mem[nd.k]=2;msg=`fib(${nd.k}) <b>已在備忘錄</b> → 直接取 ${nd.v}，下面整棵子樹都不用算`;line=2;}
+    else{st[nd.id]=2;if(memoOn)mem[nd.k]=1;msg=`fib(${nd.k}) = fib(${nd.k-1}) + fib(${nd.k-2}) = <b>${nd.v}</b>${memoOn?'，寫入備忘錄':''}`;line=6;}
+    fr.push({T,st:st.slice(),mem:mem.slice(),calls,hits,cur:nd.id,msg,line});
+    if(t==='hit')mem[nd.k]=1;
+  }
+  const brute=2*fibv(n+1)-1;
+  fr.push({...fr.at(-1),cur:-1,line:[],msg:memoOn?`完成！只呼叫了 <b>${calls}</b> 次（其中 ${hits} 次是查表），暴力版要 ${brute} 次。n 越大差距越誇張：n = 40 時暴力約 3.3 億次，記憶化只要 79 次。`:`完成！fib(${n}) 一共呼叫了 <b>${calls}</b> 次，但不同的子問題只有 ${n+1} 個。切到「記憶化搜索」比較看看。`});
+  return fr;
+}
+function fibv(k){let a=0,b=1;while(k--)[a,b]=[b,a+b];return a;}
+function renderFib(s,f){
+  const T=f.T,dx=60,dy=58,W=T.lf*dx+8,H=(T.md+1)*dy;const X=n=>4+n.x*dx+dx/2,Y=n=>20+n.d*dy;
+  let e='',c='';
+  for(const n of T.nodes){const v=f.st[n.id];if(!v)continue;
+    if(n.p)e+=`<line class="ed" x1="${X(n.p)}" y1="${Y(n.p)}" x2="${X(n)}" y2="${Y(n)}"/>`;
+    c+=`<g class="nd n${v}${n.id===f.cur?' cur':''}"><rect x="${X(n)-27}" y="${Y(n)-14}" width="54" height="28" rx="8"/><text x="${X(n)}" y="${Y(n)+4.5}">${v>=2?`f(${n.k})=${n.v}`:`f(${n.k})`}</text></g>`;}
+  const mrow=T.memoOn?`<div class="mrow"><span>備忘錄</span>${f.mem.map((m,k)=>k<2?'':`<div class="mc ${m===2?'h':m?'f':''}"><small>${k}</small>${m?fibv(k):'&nbsp;'}</div>`).join('')}</div>`:'';
+  s.innerHTML=`<div class="tree"><svg viewBox="0 0 ${W} ${H}" style="max-height:${Math.max(220,H)}px" role="img" aria-label="fib 遞迴樹">${e}${c}</svg></div>${mrow}
+  <div class="stats"><div class="stat"><b>${f.calls}</b>次呼叫</div>${T.memoOn?`<div class="stat"><b>${f.hits}</b>次備忘錄命中</div>`:''}<div class="stat"><b>${T.n+1}</b>個不同子問題</div></div>`;
+}
+
+/* ---------- 416 ---------- */
+let A416=[1,5,11,5];
+const C416TD=['def canPartition(nums):','    s = sum(nums)','    if s % 2: return False','    t = s // 2','    @cache  # 記憶化：算過的 (i, j) 直接回傳','    def dfs(i, j):  # 前 i 個數能否湊出 j','        if i == 0: return j == 0','        x = nums[i - 1]','        if j < x: return dfs(i - 1, j)  # 只能不選','        return dfs(i - 1, j) or dfs(i - 1, j - x)','    return dfs(len(nums), t)'];
+const C416BU=['def canPartition(nums):','    s = sum(nums)','    if s % 2: return False','    t, n = s // 2, len(nums)','    dp = [[False] * (t + 1) for _ in range(n + 1)]','    dp[0][0] = True','    for i in range(1, n + 1):','        x = nums[i - 1]','        for j in range(t + 1):','            dp[i][j] = dp[i - 1][j]          # 不選','            if j >= x and dp[i - 1][j - x]:  # 選','                dp[i][j] = True','    return dp[n][t]'];
+function build416(mode){
+  const a=A416,n=a.length,s=a.reduce((x,y)=>x+y,0);
+  if(s%2){const tr=new Tr(n+1,1);tr.snap({msg:`總和 ${s} 是奇數，不可能平分 → <b>False</b>。換一組輸入試試。`,line:2,td:mode==='td'});return tr.F;}
+  const t=s/2,tr=new Tr(n+1,t+1),td=mode==='td';
+  if(td){
+    tr.snap({td,msg:`總和 ${s}，目標 t = ${t}。從 <b>dfs(${n}, ${t})</b> 開始：前 ${n} 個數能不能湊出 ${t}？`,line:[1,3,10]});
+    const B=v=>v?'True':'False';
+    const dfs=(i,j)=>{
+      if(tr.st[i][j]===2){tr.snap({td,cur:[i,j],hit:[i,j],msg:`dfs(${i}, ${j}) 早就算過 = ${B(tr.val[i][j])}，<b>直接查備忘錄</b>`,line:4});return tr.val[i][j];}
+      tr.st[i][j]=1;tr.stack.push(`dfs(${i}, ${j})`);tr.n++;
+      tr.snap({td,cur:[i,j],msg:`進入 dfs(${i}, ${j})：前 ${i} 個數能否湊出 ${j}？`,line:5});
+      let r,src=[];
+      if(i===0){r=j===0;}
+      else{const x=a[i-1];
+        if(j<x){tr.snap({td,cur:[i,j],msg:`第 ${i} 個數 x = ${x} 大於 j = ${j}，只能不選 → 問 dfs(${i-1}, ${j})`,line:8});r=dfs(i-1,j);src=[[i-1,j]];}
+        else{tr.snap({td,cur:[i,j],msg:`x = ${x}。先試「不選」→ dfs(${i-1}, ${j})`,line:9});r=dfs(i-1,j);src=[[i-1,j]];
+          if(!r){tr.snap({td,cur:[i,j],src,msg:`不選湊不出來，改試「選 ${x}」→ dfs(${i-1}, ${j-x})`,line:9});r=dfs(i-1,j-x);src.push([i-1,j-x]);}
+          else tr.snap({td,cur:[i,j],src,msg:`不選就成功了，<code>or</code> 短路，不必再試「選」`,line:9});}}
+      tr.val[i][j]=r;tr.st[i][j]=2;tr.stack.pop();
+      tr.snap({td,cur:[i,j],src,msg:i===0?`邊界：用 0 個數只能湊出 0 → dfs(0, ${j}) = <b>${B(r)}</b>`:`dfs(${i}, ${j}) = <b>${B(r)}</b>，存進備忘錄`,line:i===0?6:9});
+      return r;};
+    const r=dfs(n,t);
+    tr.snap({td,cur:[n,t],msg:`答案 <b>${B(r)}</b>。整張表有 ${(n+1)*(t+1)} 格，記憶化搜索只算了 ${tr.n} 格——只碰「真正用得到」的狀態。`,line:10});
+  }else{
+    for(let j=0;j<=t;j++){tr.val[0][j]=j===0;tr.st[0][j]=2;}
+    tr.snap({msg:`初始化：第 0 行代表「一個數都不用」，只有 dp[0][0] = True。`,line:[4,5]});
+    for(let i=1;i<=n;i++){const x=a[i-1];
+      for(let j=0;j<=t;j++){const no=tr.val[i-1][j],yes=j>=x&&tr.val[i-1][j-x];tr.val[i][j]=no||yes;tr.st[i][j]=2;
+        const src=[[i-1,j]];if(j>=x)src.push([i-1,j-x]);
+        tr.snap({cur:[i,j],src,line:[9,10,11],msg:`dp[${i}][${j}]：不選 x=${x} → dp[${i-1}][${j}] = ${no?'✓':'✗'}`+(j>=x?`；選 → dp[${i-1}][${j-x}] = ${tr.val[i-1][j-x]?'✓':'✗'}`:`；j < x 不能選`)+` ⇒ <b>${no||yes?'✓':'✗'}</b>`});}}
+    tr.snap({cur:[n,t],msg:`答案 dp[${n}][${t}] = <b>${tr.val[n][t]?'True':'False'}</b>。注意每一行只依賴上一行 → 可以壓成一維陣列，j 倒序更新。`,line:12});
+  }
+  return tr.F;
+}
+function render416(s,f){const a=A416;
+  const g=gridHTML(f,{rl:f.val.map((_,i)=>i?`i=${i} (${a[i-1]})`:'i=0 ∅'),cl:f.val[0].map((_,j)=>j),fmt:v=>v?'✓':'✗',corner:'j →'});
+  s.innerHTML=side(f,f.td,g);}
+
+/* ---------- 322 ---------- */
+let C322=[1,2,5],M322=11;
+const C322TD=['def coinChange(coins, amount):','    @cache  # 記憶化','    def dfs(x):  # 湊出金額 x 最少要幾枚硬幣','        if x == 0: return 0','        if x < 0: return inf  # 此路不通','        best = inf','        for c in coins:  # 最後一枚用 c','            best = min(best, dfs(x - c) + 1)','        return best','    ans = dfs(amount)','    return ans if ans < inf else -1'];
+const C322BU=['def coinChange(coins, amount):','    dp = [0] + [inf] * amount  # dp[x]：湊出 x 的最少枚數','    for x in range(1, amount + 1):','        for c in coins:','            if c <= x:','                dp[x] = min(dp[x], dp[x - c] + 1)','    return dp[amount] if dp[amount] < inf else -1'];
+function build322(mode){
+  const cs=C322,m=M322,td=mode==='td',tr=new Tr(1,m+1,o=>`dfs(${o.x})${o.c!=null?` 試 ${o.c}，最佳 ${F(o.b)}`:''}`);
+  if(td){
+    tr.snap({td,msg:`從 <b>dfs(${m})</b> 開始：湊出 ${m} 最少要幾枚？`,line:9});
+    const dfs=x=>{
+      if(x<0){tr.snap({td,msg:`dfs(${x})：金額變負數，回傳 ∞（這條路不通）`,line:4});return Infinity;}
+      if(tr.st[0][x]===2){tr.snap({td,cur:[0,x],hit:[0,x],msg:`dfs(${x}) 已在備忘錄 = ${F(tr.val[0][x])}，<b>一步就回來</b>`,line:1});return tr.val[0][x];}
+      const o={x,c:null,b:Infinity};tr.st[0][x]=1;tr.stack.push(o);
+      tr.snap({td,cur:[0,x],msg:`進入 dfs(${x})`,line:2});
+      if(x===0){tr.val[0][0]=0;tr.st[0][0]=2;tr.stack.pop();tr.snap({td,cur:[0,0],msg:`邊界：dfs(0) = <b>0</b>，不需要硬幣`,line:3});return 0;}
+      for(const c of cs){o.c=c;
+        tr.snap({td,cur:[0,x],msg:`dfs(${x}) 試「最後一枚用 ${c}」→ 需要 dfs(${x-c})`,line:[6,7]});
+        const r=dfs(x-c);const nb=Math.min(o.b,r+1);
+        tr.snap({td,cur:[0,x],src:x-c>=0?[[0,x-c]]:[],msg:`回到 dfs(${x})：dfs(${x-c}) + 1 = ${F(r+1)}，目前最佳 <b>${F(nb)}</b>`,line:7});o.b=nb;}
+      tr.val[0][x]=o.b;tr.st[0][x]=2;tr.stack.pop();
+      tr.snap({td,cur:[0,x],msg:`dfs(${x}) = <b>${F(o.b)}</b>，寫入備忘錄`,line:8});return o.b;};
+    const r=dfs(m);
+    tr.snap({td,cur:[0,m],msg:`答案：<b>${r===Infinity?-1:r}</b>${r===Infinity?'（湊不出來）':' 枚'}。`,line:10});
+  }else{
+    tr.val[0]=tr.val[0].map((_,x)=>x?Infinity:0);tr.st[0][0]=2;
+    tr.snap({msg:`初始化：dp[0] = 0，其他都是 ∞（還湊不出來）。`,line:1});
+    for(let x=1;x<=m;x++){tr.st[0][x]=1;
+      for(const c of cs){if(c>x){tr.snap({cur:[0,x],msg:`dp[${x}]：硬幣 ${c} 比 ${x} 大，跳過`,line:4});continue;}
+        const nv=Math.min(tr.val[0][x],tr.val[0][x-c]+1);
+        tr.snap({cur:[0,x],src:[[0,x-c]],msg:`dp[${x}]：用 ${c} → dp[${x-c}] + 1 = ${F(tr.val[0][x-c]+1)}，取 min 得 <b>${F(nv)}</b>`,line:5});tr.val[0][x]=nv;}
+      tr.st[0][x]=2;}
+    const r=tr.val[0][m];tr.snap({cur:[0,m],msg:`答案 dp[${m}] = <b>${r===Infinity?-1:r}</b>。`,line:6});
+  }
+  return tr.F;
+}
+function render322(s,f){
+  const g=gridHTML(f,{rl:['memo'],cl:f.val[0].map((_,x)=>x),fmt:F,corner:'x →'});
+  s.innerHTML=`<div class="chips">硬幣：${C322.map(c=>`<span class="chip">${c}</span>`).join('')}　金額：<span class="chip">${M322}</span></div>`+side(f,f.td,g);}
+
+/* ---------- 1143 ---------- */
+let S1='abcbdab',S2='bdcaba';
+const C1143TD=['def longestCommonSubsequence(s, t):','    @cache  # 記憶化','    def dfs(i, j):  # s[:i] 與 t[:j] 的 LCS 長度','        if i == 0 or j == 0: return 0','        if s[i - 1] == t[j - 1]:','            return dfs(i - 1, j - 1) + 1','        return max(dfs(i - 1, j), dfs(i, j - 1))','    return dfs(len(s), len(t))'];
+const C1143BU=['def longestCommonSubsequence(s, t):','    n, m = len(s), len(t)','    dp = [[0] * (m + 1) for _ in range(n + 1)]','    for i in range(1, n + 1):','        for j in range(1, m + 1):','            if s[i - 1] == t[j - 1]:','                dp[i][j] = dp[i - 1][j - 1] + 1','            else:','                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])','    return dp[n][m]'];
+function build1143(mode){
+  const s=S1,t=S2,n=s.length,m=t.length,td=mode==='td',tr=new Tr(n+1,m+1),E=esc;
+  if(td){
+    tr.snap({td,msg:`從 <b>dfs(${n}, ${m})</b> 開始：整個 s 和整個 t 的 LCS 是多長？`,line:7});
+    const dfs=(i,j)=>{
+      if(tr.st[i][j]===2){tr.snap({td,cur:[i,j],hit:[i,j],msg:`dfs(${i}, ${j}) 已算過 = ${tr.val[i][j]}，<b>查備忘錄</b>`,line:1});return tr.val[i][j];}
+      tr.st[i][j]=1;tr.stack.push(`dfs(${i}, ${j})`);tr.n++;tr.snap({td,cur:[i,j],msg:`進入 dfs(${i}, ${j})`,line:2});
+      let r,src=[];
+      if(!i||!j){r=0;}
+      else if(s[i-1]===t[j-1]){tr.snap({td,cur:[i,j],msg:`s[${i-1}] = '${E(s[i-1])}'、t[${j-1}] = '${E(t[j-1])}' <b>相同</b> → 兩邊各退一格，問對角線 dfs(${i-1}, ${j-1})`,line:[4,5]});r=dfs(i-1,j-1)+1;src=[[i-1,j-1]];}
+      else{tr.snap({td,cur:[i,j],msg:`'${E(s[i-1])}' ≠ '${E(t[j-1])}' → 丟掉 s 的最後一個字元或 t 的最後一個字元，取較大者`,line:6});
+        const u=dfs(i-1,j),l=dfs(i,j-1);r=Math.max(u,l);src=[[i-1,j],[i,j-1]];}
+      tr.val[i][j]=r;tr.st[i][j]=2;tr.stack.pop();
+      tr.snap({td,cur:[i,j],src,msg:!i||!j?`邊界：有一邊是空字串 → 0`:`dfs(${i}, ${j}) = <b>${r}</b>，存入備忘錄`,line:!i||!j?3:(src.length===1?5:6)});return r;};
+    dfs(n,m);
+    tr.snap({td,cur:[n,m],msg:`長度 = <b>${tr.val[n][m]}</b>。表格共 ${(n+1)*(m+1)} 格，記憶化只算了 ${tr.n} 格。接下來回溯還原字串。`,line:7});
+  }else{
+    for(let i=0;i<=n;i++){tr.val[i][0]=0;tr.st[i][0]=2;}for(let j=0;j<=m;j++){tr.val[0][j]=0;tr.st[0][j]=2;}
+    tr.snap({msg:`第 0 行、第 0 列代表空字串，LCS 都是 0。接著一列一列、由左到右填。`,line:2});
+    for(let i=1;i<=n;i++)for(let j=1;j<=m;j++){
+      if(s[i-1]===t[j-1]){tr.val[i][j]=tr.val[i-1][j-1]+1;tr.st[i][j]=2;tr.snap({cur:[i,j],src:[[i-1,j-1]],line:[5,6],msg:`'${E(s[i-1])}' = '${E(t[j-1])}' 相同 → 左上 ${tr.val[i-1][j-1]} + 1 = <b>${tr.val[i][j]}</b>`});}
+      else{tr.val[i][j]=Math.max(tr.val[i-1][j],tr.val[i][j-1]);tr.st[i][j]=2;tr.snap({cur:[i,j],src:[[i-1,j],[i,j-1]],line:[7,8],msg:`'${E(s[i-1])}' ≠ '${E(t[j-1])}' → max(上 ${tr.val[i-1][j]}, 左 ${tr.val[i][j-1]}) = <b>${tr.val[i][j]}</b>`});}}
+    tr.snap({cur:[n,m],msg:`表格填完，dp[${n}][${m}] = <b>${tr.val[n][m]}</b>。接下來回溯還原字串。`,line:9});
+  }
+  let i=n,j=m,str='';const path=[];
+  while(i>0&&j>0){path.push(i+','+j);
+    if(s[i-1]===t[j-1]){str=s[i-1]+str;tr.snap({td,path:path.slice(),cur:[i,j],msg:`回溯 (${i}, ${j})：'${E(s[i-1])}' 相同，收下它，走對角線。目前：<b>"${E(str)}"</b>`,line:[]});i--;j--;}
+    else if(tr.val[i-1][j]>=tr.val[i][j-1]){tr.snap({td,path:path.slice(),cur:[i,j],msg:`回溯 (${i}, ${j})：字元不同，上方 ${tr.val[i-1][j]} ≥ 左方 ${tr.val[i][j-1]}，往上走`,line:[]});i--;}
+    else{tr.snap({td,path:path.slice(),cur:[i,j],msg:`回溯 (${i}, ${j})：字元不同，左方較大，往左走`,line:[]});j--;}}
+  tr.snap({td,path,msg:`一個最長公共子序列是 <b>"${E(str)}"</b>，長度 ${str.length}。（LCS 可能不唯一，走法不同會得到別的答案）`,line:[]});
+  return tr.F;
+}
+function render1143(s,f){
+  const g=gridHTML(f,{rl:['∅',...[...S1].map((c,i)=>`${i+1} ${esc(c)}`)],cl:['∅',...[...S2].map((c,j)=>`${j+1}<br>${esc(c)}`)],fmt:v=>v,corner:'s ＼ t'});
+  s.innerHTML=side(f,f.td,g);}
+
+/* ---------- 312 ---------- */
+let A312=[3,1,5,8];
+const C312TD=['def maxCoins(nums):','    v = [1] + nums + [1]','    @cache  # 記憶化','    def dfs(i, j):  # 戳完開區間 (i, j) 內所有氣球的最大分','        if i + 1 >= j: return 0  # 區間內沒有氣球','        best = 0','        for k in range(i + 1, j):  # k：最後戳破的氣球','            best = max(best, dfs(i, k) + v[i] * v[k] * v[j] + dfs(k, j))','        return best','    return dfs(0, len(v) - 1)'];
+const C312BU=['def maxCoins(nums):','    v = [1] + nums + [1]','    N = len(v)','    dp = [[0] * N for _ in range(N)]','    for L in range(2, N):  # 區間長度由短到長','        for i in range(N - L):','            j = i + L','            for k in range(i + 1, j):','                dp[i][j] = max(dp[i][j], dp[i][k] + v[i] * v[k] * v[j] + dp[k][j])','    return dp[0][N - 1]'];
+function build312(mode){
+  const v=[1,...A312,1],N=v.length,td=mode==='td',tr=new Tr(N,N,o=>`dfs(${o.i}, ${o.j})${o.k!=null?` k=${o.k} 最佳 ${o.b}`:''}`);
+  const cand=(i,j,k,best,line)=>{const a=tr.val[i][k],c=tr.val[k][j],mid=v[i]*v[k]*v[j],sum=a+mid+c,nb=Math.max(best,sum);
+    tr.snap({td,cur:[i,j],src:[[i,k],[k,j]],bal:{i,j,k},line,
+      eq:`dp[${i}][${k}] + v[${i}]·v[${k}]·v[${j}] + dp[${k}][${j}] = ${a} + ${v[i]}·${v[k]}·${v[j]} + ${c} = <b>${sum}</b>`,
+      msg:`區間 (${i}, ${j})，讓 v[${k}] = ${v[k]} <b>最後</b>戳：左半 ${a} 分＋戳它 ${mid} 分＋右半 ${c} 分 = ${sum}${sum>best?`，刷新最佳為 <b>${nb}</b>`:`，沒有比 ${best} 好`}`});return nb;};
+  if(td){
+    tr.snap({td,bal:{i:0,j:N-1,k:-1},msg:`兩端補上 1：v = [${v.join(', ')}]。從 <b>dfs(0, ${N-1})</b> 開始，代表戳完原本所有氣球。`,line:[1,9]});
+    const dfs=(i,j)=>{
+      if(tr.st[i][j]===2){tr.snap({td,cur:[i,j],hit:[i,j],bal:{i,j,k:-1},msg:`dfs(${i}, ${j}) 已算過 = ${tr.val[i][j]}，<b>查備忘錄</b>`,line:2});return tr.val[i][j];}
+      if(i+1>=j){tr.val[i][j]=0;tr.st[i][j]=2;tr.snap({td,cur:[i,j],bal:{i,j,k:-1},msg:`(${i}, ${j}) 之間沒有氣球 → 0`,line:4});return 0;}
+      const o={i,j,k:null,b:0};tr.st[i][j]=1;tr.stack.push(o);
+      tr.snap({td,cur:[i,j],bal:{i,j,k:-1},msg:`進入 dfs(${i}, ${j})：戳完 v[${i+1}..${j-1}]，枚舉誰最後戳`,line:3});
+      for(let k=i+1;k<j;k++){o.k=k;dfs(i,k);dfs(k,j);o.b=cand(i,j,k,o.b,7);}
+      tr.val[i][j]=o.b;tr.st[i][j]=2;tr.stack.pop();
+      tr.snap({td,cur:[i,j],bal:{i,j,k:-1},msg:`dfs(${i}, ${j}) = <b>${o.b}</b>，存入備忘錄`,line:8});return o.b;};
+    dfs(0,N-1);
+  }else{
+    for(let i=0;i+1<N;i++){tr.val[i][i+1]=0;tr.st[i][i+1]=2;}
+    tr.snap({bal:{i:0,j:N-1,k:-1},msg:`v = [${v.join(', ')}]。長度 1 的開區間 (i, i+1) 內沒氣球，全是 0。接著按區間長度 L = 2, 3, … 往上填。`,line:[1,3]});
+    for(let L=2;L<N;L++)for(let i=0;i+L<N;i++){const j=i+L;let best=0;tr.val[i][j]=0;tr.st[i][j]=1;
+      for(let k=i+1;k<j;k++){best=cand(i,j,k,best,8);tr.val[i][j]=best;}
+      tr.st[i][j]=2;}
+  }
+  tr.snap({td,cur:[0,N-1],bal:{i:0,j:N-1,k:-1},msg:`答案 dp[0][${N-1}] = <b>${tr.val[0][N-1]}</b>。`,line:td?9:9});
+  return tr.F;
+}
+function render312(s,f){const v=[1,...A312,1],N=v.length,b=f.bal||{i:-1,j:-1,k:-1};
+  const bal=v.map((x,t)=>{let c='bl';if(t===0||t===N-1)c+=' pad';if(t===b.i||t===b.j)c+=' wall';
+    if(t>b.i&&t<b.j){c+=t===b.k?' k':b.k<0?' in':t<b.k?' L':' R';}
+    return `<div class="${c}"><div>${x}</div>${t}</div>`;}).join('');
+  const g=gridHTML(f,{rl:v.map((x,i)=>`i=${i}`),cl:v.map((x,j)=>`j=${j}`),fmt:x=>x,mask:(r,c)=>c>r,corner:''});
+  s.innerHTML=`<div class="bal">${bal}</div><div class="eq">${f.eq||''}</div>`+side(f,f.td,g);}
+
+/* ---------- wire up ---------- */
+P.intro=new Player(document.getElementById('p-fib'),{modes:[{id:'bf',label:'暴力遞迴',code:FIBCODE},{id:'memo',label:'記憶化搜索',code:FIBCODE}],build:m=>buildFib(m==='memo'),render:renderFib});
+P.lc416=new Player(document.getElementById('p416'),{modes:[{id:'td',label:'記憶化搜索',code:C416TD},{id:'bu',label:'遞推填表',code:C416BU}],build:build416,render:render416});
+P.lc322=new Player(document.getElementById('p322'),{modes:[{id:'td',label:'記憶化搜索',code:C322TD},{id:'bu',label:'遞推填表',code:C322BU}],build:build322,render:render322});
+P.lc1143=new Player(document.getElementById('p1143'),{modes:[{id:'td',label:'記憶化搜索',code:C1143TD},{id:'bu',label:'遞推填表',code:C1143BU}],build:build1143,render:render1143});
+P.lc312=new Player(document.getElementById('p312'),{modes:[{id:'td',label:'記憶化搜索',code:C312TD},{id:'bu',label:'遞推填表',code:C312BU}],build:build312,render:render312});
+Object.values(P).forEach(p=>p.rebuild());
+
+document.querySelector('#f-fib select').addEventListener('change',e=>{fibN=+e.target.value;P.intro.rebuild();});
+function form(id,fn,p){const f=document.getElementById(id),er=f.querySelector('.err');
+  f.addEventListener('submit',e=>{e.preventDefault();const m=fn(new FormData(f));er.textContent=m||'';if(!m)p.rebuild();});}
+form('f416',d=>{const a=parseNums(d.get('a'));if(!a.length||a.some(x=>!Number.isInteger(x)||x<1))return'請輸入正整數，用逗號分隔';if(a.length>8)return'最多 8 個數';if(a.reduce((x,y)=>x+y,0)>60)return'總和請 ≤ 60，表格才放得下';A416=a;},P.lc416);
+form('f322',d=>{const c=[...new Set(parseNums(d.get('c')))],m=+d.get('m');if(!c.length||c.some(x=>!Number.isInteger(x)||x<1))return'硬幣請輸入正整數';if(c.length>5)return'最多 5 種硬幣';if(!Number.isInteger(m)||m<0||m>30)return'amount 請介於 0–30';C322=c;M322=m;},P.lc322);
+form('f1143',d=>{const s=String(d.get('s')).trim(),t=String(d.get('t')).trim();if(!s||!t)return'兩個字串都不能空';if([...s].length>9||[...t].length>9)return'每個字串最多 9 個字元';S1=s;S2=t;},P.lc1143);
+form('f312',d=>{const a=parseNums(d.get('a'));if(!a.length||a.some(x=>!Number.isInteger(x)||x<0||x>100))return'請輸入 0–100 的整數';if(a.length>6)return'最多 6 個氣球';A312=a;},P.lc312);
+
+let cur='intro';
+function route(){const h=location.hash.slice(1);cur=P[h]?h:'intro';
+  document.querySelectorAll('section.pg').forEach(s=>s.classList.toggle('on',s.id===cur));
+  document.querySelectorAll('nav a').forEach(a=>{if(a.getAttribute('href')==='#'+cur)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
+  Object.entries(P).forEach(([k,p])=>{if(k!==cur)p.stop();});}
+window.addEventListener('hashchange',()=>{route();window.scrollTo(0,0);});
+route();
+document.addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg==='INPUT'||tg==='SELECT'||tg==='TEXTAREA')return;const p=P[cur];
+  if(e.key==='ArrowRight'){p.stop();p.next();}else if(e.key==='ArrowLeft')p.prev();else if(e.key===' '&&tg!=='BUTTON'){e.preventDefault();p.play();}});
+}
+</script>
+</body>
+</html>

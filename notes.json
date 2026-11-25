@@ -1,5 +1,14 @@
 [
   {
+    "source": "",
+    "static": true,
+    "title": "動態規劃動畫教室",
+    "category": "程式設計",
+    "file": "程式設計/動態規劃動畫教室.html",
+    "added": "2026-11-26",
+    "updated": "2026-11-26"
+  },
+  {
     "source": "整理筆記/程式碼設計的底層邏輯.md",
     "title": "程式碼設計的底層邏輯",
     "category": "程式設計",
